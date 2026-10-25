@@ -5,7 +5,9 @@
 const BD_MOBILE = /^01[3-9]\d{8}$/;
 
 export function normalizeBDPhone(input: string): string | null {
-  const digits = input.replace(/[\s\-()]/g, "").replace(/^\+/, "");
+  // Accept Bangla digits (০১৭…) as typed on Bangla keyboards.
+  const western = input.replace(/[০-৯]/g, (d) => String("০১২৩৪৫৬৭৮৯".indexOf(d)));
+  const digits = western.replace(/[\s\-()]/g, "").replace(/^\+/, "");
   const local = digits.startsWith("880") ? digits.slice(2) : digits;
   return BD_MOBILE.test(local) ? `+88${local}` : null;
 }

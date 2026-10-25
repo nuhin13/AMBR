@@ -1,4 +1,5 @@
 import { percentOf } from "@/lib/money";
+import type { MessageKey } from "@/i18n/translate";
 
 /**
  * Pure pricing rules — no database access, fully unit-tested.
@@ -20,15 +21,18 @@ export type CouponRule = {
 
 export type CouponEvaluation =
   | { ok: true; discount: number; freeShipping: boolean; label: string }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; reasonKey: MessageKey; vars?: Record<string, string | number> };
+
+const fail = (reasonKey: MessageKey, reason: string, vars?: Record<string, string | number>): CouponEvaluation => ({ ok: false, reason, reasonKey, vars });
 
 export function evaluateCoupon(coupon: CouponRule, subtotal: number, now = new Date()): CouponEvaluation {
-  if (!coupon.isActive) return { ok: false, reason: "This code is no longer active." };
-  if (coupon.startsAt && coupon.startsAt > now) return { ok: false, reason: "This code isn't active yet." };
-  if (coupon.endsAt && coupon.endsAt < now) return { ok: false, reason: "This code has expired." };
-  if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) return { ok: false, reason: "This code has reached its usage limit." };
+  if (!coupon.isActive) return fail("errors.codeInactive", "This code is no longer active.");
+  if (coupon.startsAt && coupon.startsAt > now) return fail("errors.codeNotYet", "This code isn't active yet.");
+  if (coupon.endsAt && coupon.endsAt < now) return fail("errors.codeExpired", "This code has expired.");
+  if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) return fail("errors.codeLimit", "This code has reached its usage limit.");
   if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) {
-    return { ok: false, reason: `Add ৳${Math.ceil((coupon.minSubtotal - subtotal) / 100)} more to use this code.` };
+    const amount = Math.ceil((coupon.minSubtotal - subtotal) / 100);
+    return fail("errors.codeMin", `Add ৳${amount} more to use this code.`, { amount });
   }
   switch (coupon.type) {
     case "PERCENT": {

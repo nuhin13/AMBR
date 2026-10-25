@@ -3,7 +3,7 @@
 // See doc/04-database/erd.md for the design rationale.
 
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -128,13 +128,13 @@ model Division {
 }
 
 model District {
-  id             Int           @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   divisionId     Int
-  name           String        @unique
+  name           String       @unique
   nameBn         String?
   shippingZoneId String
-  division       Division      @relation(fields: [divisionId], references: [id])
-  shippingZone   ShippingZone  @relation(fields: [shippingZoneId], references: [id])
+  division       Division     @relation(fields: [divisionId], references: [id])
+  shippingZone   ShippingZone @relation(fields: [shippingZoneId], references: [id])
   upazilas       Upazila[]
   addresses      Address[]
 
@@ -159,10 +159,12 @@ model Upazila {
 model ShippingZone {
   id                    String     @id @default(cuid())
   name                  String
+  nameBn                String?
   slug                  String     @unique
   fee                   Int // poisha
   freeShippingThreshold Int? // poisha; null = never free by threshold
   estimatedDays         String     @default("2–3 days")
+  estimatedDaysBn       String?
   isActive              Boolean    @default(true)
   sortOrder             Int        @default(0)
   createdAt             DateTime   @default(now())
@@ -192,24 +194,39 @@ enum CategoryType {
 }
 
 model Category {
-  id          String         @id @default(cuid())
-  slug        String         @unique
-  name        String
-  type        CategoryType   @default(OTHER)
-  tagline     String?
-  description String?
-  imageUrl    String?
-  imageAlt    String?
-  status      CategoryStatus @default(HIDDEN)
-  sortOrder   Int            @default(0)
-  parentId    String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  parent      Category?      @relation("CategoryTree", fields: [parentId], references: [id])
-  children    Category[]     @relation("CategoryTree")
-  products    Product[]
+  id           String                @id @default(cuid())
+  slug         String                @unique
+  name         String
+  type         CategoryType          @default(OTHER)
+  tagline      String?
+  description  String?
+  imageUrl     String?
+  imageAlt     String?
+  status       CategoryStatus        @default(HIDDEN)
+  sortOrder    Int                   @default(0)
+  parentId     String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  parent       Category?             @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[]            @relation("CategoryTree")
+  products     Product[]
+  translations CategoryTranslation[]
 
   @@index([status, sortOrder])
+}
+
+model CategoryTranslation {
+  id          String            @id @default(cuid())
+  categoryId  String
+  locale      String
+  status      TranslationStatus @default(DRAFT)
+  name        String
+  tagline     String?
+  description String?
+  updatedAt   DateTime          @default(now()) @updatedAt
+  category    Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
 }
 
 enum ProductStatus {
@@ -222,6 +239,24 @@ enum Intensity {
   LIGHT
   MODERATE
   STRONG
+}
+
+enum Gender {
+  MASCULINE
+  FEMININE
+  UNISEX
+}
+
+enum VariantFormat {
+  SPRAY
+  ROLL_ON
+  OIL
+}
+
+/// Publication state of a non-English translation. English content keeps its own status fields.
+enum TranslationStatus {
+  DRAFT
+  PUBLISHED
 }
 
 enum Season {
@@ -240,6 +275,7 @@ model Product {
   description       String // sanitised rich text (HTML allow-list)
   productType       String // e.g. "Perfume Oil Spray" / "Attar Roll-on"
   intensity         Intensity     @default(MODERATE)
+  gender            Gender        @default(UNISEX)
   seasons           Season[]
   applicationMethod String?
   usageInstructions String?
@@ -287,15 +323,25 @@ model ProductPerformance {
 }
 
 model ProductTranslation {
-  id               String  @id @default(cuid())
-  productId        String
-  locale           String // "bn"
-  name             String
-  shortDescription String
-  description      String
-  product          Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id                String            @id @default(cuid())
+  productId         String
+  locale            String // "bn"
+  status            TranslationStatus @default(DRAFT)
+  name              String
+  shortDescription  String
+  description       String
+  productType       String?
+  applicationMethod String?
+  usageInstructions String?
+  safetyNote        String?
+  inspirationNote   String?
+  seoTitle          String?
+  seoDescription    String?
+  updatedAt         DateTime          @default(now()) @updatedAt
+  product           Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, locale])
+  @@index([locale, status])
 }
 
 enum VariantStatus {
@@ -309,6 +355,7 @@ model ProductVariant {
   sku            String        @unique
   sizeMl         Int
   label          String // "10 ml"
+  format         VariantFormat @default(SPRAY)
   price          Int // poisha
   compareAtPrice Int? // poisha — shows a strike-through when higher than price
   status         VariantStatus @default(ACTIVE)
@@ -346,12 +393,14 @@ model ProductImage {
 }
 
 model FragranceFamily {
-  id          String          @id @default(cuid())
-  slug        String          @unique
-  name        String
-  description String?
-  sortOrder   Int             @default(0)
-  products    ProductFamily[]
+  id            String          @id @default(cuid())
+  slug          String          @unique
+  name          String
+  nameBn        String?
+  description   String?
+  descriptionBn String?
+  sortOrder     Int             @default(0)
+  products      ProductFamily[]
 }
 
 model ProductFamily {
@@ -369,6 +418,7 @@ model FragranceNote {
   id       String        @id @default(cuid())
   slug     String        @unique
   name     String
+  nameBn   String?
   products ProductNote[]
 }
 
@@ -394,6 +444,7 @@ model Occasion {
   id        String            @id @default(cuid())
   slug      String            @unique
   name      String
+  nameBn    String?
   sortOrder Int               @default(0)
   products  ProductOccasion[]
 }
@@ -414,18 +465,32 @@ enum CollectionStatus {
 }
 
 model Collection {
-  id          String              @id @default(cuid())
-  slug        String              @unique
-  name        String
-  description String?
-  imageUrl    String?
-  imageAlt    String?
-  status      CollectionStatus    @default(HIDDEN)
-  isFeatured  Boolean             @default(false)
-  sortOrder   Int                 @default(0)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  products    CollectionProduct[]
+  id           String                  @id @default(cuid())
+  slug         String                  @unique
+  name         String
+  description  String?
+  imageUrl     String?
+  imageAlt     String?
+  status       CollectionStatus        @default(HIDDEN)
+  isFeatured   Boolean                 @default(false)
+  sortOrder    Int                     @default(0)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  products     CollectionProduct[]
+  translations CollectionTranslation[]
+}
+
+model CollectionTranslation {
+  id           String            @id @default(cuid())
+  collectionId String
+  locale       String
+  status       TranslationStatus @default(DRAFT)
+  name         String
+  description  String?
+  updatedAt    DateTime          @default(now()) @updatedAt
+  collection   Collection        @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, locale])
 }
 
 model CollectionProduct {
@@ -565,16 +630,17 @@ model Order {
   reservationExpiresAt DateTime? // for online payments awaiting confirmation
   adminNotes           String?
   isDemo               Boolean       @default(false)
+  locale               String        @default("en") // language for notifications and links
   placedAt             DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  user          User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  items         OrderItem[]
-  history       OrderStatusHistory[]
-  payments      Payment[]
-  shipment      Shipment?
-  movements     InventoryMovement[]
-  redemption    CouponRedemption?
+  user       User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items      OrderItem[]
+  history    OrderStatusHistory[]
+  payments   Payment[]
+  shipment   Shipment?
+  movements  InventoryMovement[]
+  redemption CouponRedemption?
 
   @@index([status, placedAt(sort: Desc)])
   @@index([paymentStatus])
@@ -740,6 +806,7 @@ model Review {
   title       String?
   body        String
   status      ReviewStatus @default(PENDING)
+  locale      String? // language the customer wrote in; shown as-is
   approvedAt  DateTime?
   createdAt   DateTime     @default(now())
   product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -795,10 +862,12 @@ enum BannerPlacement {
   HOME_HERO
   ANNOUNCEMENT
   PROMO
+  DISCOVERY // homepage "discover the collections" tiles
+  STORY // homepage brand-philosophy image + copy
 }
 
 model Banner {
-  id           String          @id @default(cuid())
+  id           String              @id @default(cuid())
   placement    BannerPlacement
   eyebrow      String?
   title        String
@@ -812,43 +881,136 @@ model Banner {
   cta2Href     String?
   startsAt     DateTime?
   endsAt       DateTime?
-  sortOrder    Int             @default(0)
-  isActive     Boolean         @default(true)
+  sortOrder    Int                 @default(0)
+  isActive     Boolean             @default(true)
   campaignId   String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  campaign     Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  campaign     Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  translations BannerTranslation[]
 
   @@index([placement, isActive, sortOrder])
 }
 
+model BannerTranslation {
+  id        String            @id @default(cuid())
+  bannerId  String
+  locale    String
+  status    TranslationStatus @default(DRAFT)
+  eyebrow   String?
+  title     String
+  subtitle  String?
+  imageAlt  String?
+  ctaLabel  String?
+  cta2Label String?
+  updatedAt DateTime          @default(now()) @updatedAt
+  banner    Banner            @relation(fields: [bannerId], references: [id], onDelete: Cascade)
+
+  @@unique([bannerId, locale])
+}
+
 model ContentPage {
-  id             String   @id @default(cuid())
-  slug           String   @unique // "about", "shipping-policy", …
+  id             String                   @id @default(cuid())
+  slug           String                   @unique // "about", "shipping-policy", …
   title          String
   body           String // sanitised HTML
   seoDescription String?
-  updatedAt      DateTime @updatedAt
-  createdAt      DateTime @default(now())
+  updatedAt      DateTime                 @updatedAt
+  createdAt      DateTime                 @default(now())
+  translations   ContentPageTranslation[]
+}
+
+model ContentPageTranslation {
+  id             String            @id @default(cuid())
+  pageId         String
+  locale         String
+  status         TranslationStatus @default(DRAFT)
+  title          String
+  body           String // sanitised HTML
+  seoDescription String?
+  updatedAt      DateTime          @default(now()) @updatedAt
+  page           ContentPage       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, locale])
 }
 
 model FaqItem {
-  id        String   @id @default(cuid())
+  id           String           @id @default(cuid())
+  question     String
+  answer       String
+  category     String           @default("General")
+  sortOrder    Int              @default(0)
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  translations FaqTranslation[]
+}
+
+model FaqTranslation {
+  id        String            @id @default(cuid())
+  faqId     String
+  locale    String
+  status    TranslationStatus @default(DRAFT)
   question  String
   answer    String
-  category  String   @default("General")
-  sortOrder Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  category  String?
+  updatedAt DateTime          @default(now()) @updatedAt
+  faq       FaqItem           @relation(fields: [faqId], references: [id], onDelete: Cascade)
+
+  @@unique([faqId, locale])
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// Journal articles. English lives here; other languages in ArticleTranslation.
+model Article {
+  id             String               @id @default(cuid())
+  slug           String               @unique
+  status         ArticleStatus        @default(DRAFT)
+  title          String
+  excerpt        String
+  body           String // sanitised HTML
+  coverImage     String?
+  coverAlt       String?
+  authorName     String?
+  seoTitle       String?
+  seoDescription String?
+  publishedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  translations   ArticleTranslation[]
+
+  @@index([status, publishedAt(sort: Desc)])
+}
+
+model ArticleTranslation {
+  id             String            @id @default(cuid())
+  articleId      String
+  locale         String
+  status         TranslationStatus @default(DRAFT)
+  title          String
+  excerpt        String
+  body           String
+  coverAlt       String?
+  seoTitle       String?
+  seoDescription String?
+  updatedAt      DateTime          @default(now()) @updatedAt
+  article        Article           @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, locale])
 }
 
 model HomepageSection {
-  key       String  @id // "categories", "bestSellers", …
-  isEnabled Boolean @default(true)
-  sortOrder Int     @default(0)
-  title     String?
-  subtitle  String?
+  key        String  @id // "categories", "bestSellers", …
+  isEnabled  Boolean @default(true)
+  sortOrder  Int     @default(0)
+  title      String?
+  subtitle   String?
+  titleBn    String?
+  subtitleBn String?
 }
 
 model StoreSetting {

@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { updateProfileAction } from "@/modules/customers/actions";
 import { changePasswordAction } from "@/modules/auth/actions";
+import { useI18n } from "@/i18n/client";
 
 export function ProfileForms({ name, email, phone, marketingOptIn }: { name: string; email: string; phone: string; marketingOptIn: boolean }) {
   const toast = useToast();
+  const { t } = useI18n();
   const [p1, start1] = useTransition();
   const [p2, start2] = useTransition();
   const [e1, setE1] = useState<Record<string, string>>({});
@@ -22,16 +24,16 @@ export function ProfileForms({ name, email, phone, marketingOptIn }: { name: str
           const fd = new FormData(e.currentTarget);
           start1(async () => {
             const r = await updateProfileAction({ name: fd.get("name"), phone: fd.get("phone"), marketingOptIn: fd.get("marketing") === "on" });
-            if (r.ok) { setE1({}); toast(r.message ?? "Saved"); } else { setE1(r.fieldErrors ?? {}); toast(r.error, "error"); }
+            if (r.ok) { setE1({}); toast(r.message ?? t.common.saved); } else { setE1(r.fieldErrors ?? {}); toast(r.error, "error"); }
           });
         }}
       >
-        <h2 className="text-[24px]">Profile</h2>
-        <Input name="name" label="Full name" defaultValue={name} required error={e1.name} />
-        <Input label="Email" value={email} disabled hint="Contact us to change your email" readOnly />
-        <Input name="phone" label="Mobile number" type="tel" prefix="+88" defaultValue={phone} error={e1.phone} />
-        <Checkbox name="marketing" label="Send me news about new scents and offers" defaultChecked={marketingOptIn} />
-        <Button type="submit" loading={p1}>Save profile</Button>
+        <h2 className="t-h3">{t.account.profileTitle}</h2>
+        <Input name="name" label={t.auth.fullName} defaultValue={name} required error={e1.name} />
+        <Input label={t.auth.email} value={email} disabled hint={t.account.emailLocked} readOnly />
+        <Input name="phone" label={t.checkout.mobile} type="tel" prefix="+88" defaultValue={phone} error={e1.phone} />
+        <Checkbox name="marketing" label={t.auth.marketing} defaultChecked={marketingOptIn} />
+        <Button type="submit" loading={p1}>{t.account.saveProfile}</Button>
       </form>
       <form
         className="space-y-4"
@@ -41,14 +43,14 @@ export function ProfileForms({ name, email, phone, marketingOptIn }: { name: str
           const fd = new FormData(form);
           start2(async () => {
             const r = await changePasswordAction({ current: fd.get("current"), next: fd.get("next") });
-            if (r.ok) { setE2({}); form.reset(); toast(r.message ?? "Password updated"); } else { setE2(r.fieldErrors ?? { current: r.error }); }
+            if (r.ok) { setE2({}); form.reset(); toast(r.message ?? t.errors.passwordUpdated); } else { setE2(r.fieldErrors ?? { current: r.error }); }
           });
         }}
       >
-        <h2 className="text-[24px]">Change password</h2>
-        <Input name="current" type="password" label="Current password" autoComplete="current-password" required error={e2.current} />
-        <Input name="next" type="password" label="New password" autoComplete="new-password" required error={e2.next} hint="At least 8 characters" />
-        <Button type="submit" variant="secondary" loading={p2}>Update password</Button>
+        <h2 className="t-h3">{t.auth.changePassword}</h2>
+        <Input name="current" type="password" label={t.account.currentPassword} autoComplete="current-password" required error={e2.current} />
+        <Input name="next" type="password" label={t.auth.newPassword} autoComplete="new-password" required error={e2.next} hint={t.auth.passwordHint} />
+        <Button type="submit" variant="secondary" loading={p2}>{t.account.updatePassword}</Button>
       </form>
     </div>
   );

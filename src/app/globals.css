@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 /*
- * AMBR design tokens — see doc/03-design/design-direction.md
- * Contrast rules: rose and gold are never used for text on cream (decorative only).
+ * AMBR design system — editorial fragrance house.
+ * See doc/10-redesign-and-bilingual/plan.md. Colours are the approved brand palette only.
+ * Contrast rules: rose and gold are never used for body text on cream (decorative / large display only).
  */
 @theme {
+  /* Brand palette */
   --color-burgundy: #4a1022;
   --color-burgundy-deep: #3a0c1a;
   --color-burgundy-soft: #6b2a3c;
@@ -18,18 +20,20 @@
   --color-error: #9b2335;
   --color-success: #4f6b4a;
 
-  --font-serif: var(--font-playfair), var(--font-bengali), Georgia, "Times New Roman", serif;
-  --font-sans: var(--font-montserrat), var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
+  /* Type families (Bangla families are swapped in under :lang(bn), see below) */
+  --font-serif: var(--font-playfair), var(--font-serif-bn), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-montserrat), var(--font-sans-bn), ui-sans-serif, system-ui, sans-serif;
 
   --radius-xs: 2px;
   --radius-card: 4px;
+  --tracking-eyebrow: 0.24em;
 
-  --tracking-eyebrow: 0.22em;
-
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-fade-in: fade-in 220ms ease-out both;
-  --animate-slide-in-right: slide-in-right 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-slide-in-left: slide-in-left 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-slide-up: slide-up 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-in-right: slide-in-right 320ms var(--ease-out-soft) both;
+  --animate-slide-in-left: slide-in-left 320ms var(--ease-out-soft) both;
+  --animate-slide-up: slide-up 320ms var(--ease-out-soft) both;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -49,6 +53,46 @@
   }
 }
 
+/* Layout + type tokens */
+:root {
+  --w-text: 38rem;
+  --w-content: 80rem; /* 1280px */
+  --w-wide: 90rem; /* 1440px */
+  --gutter: 1rem;
+  --space-section: clamp(4.5rem, 10vw, 9rem);
+  --space-block: clamp(2.5rem, 5vw, 4.5rem);
+
+  --t-display: clamp(2.6rem, 6.8vw, 6.25rem);
+  --t-h1: clamp(2.3rem, 5vw, 4.25rem);
+  --t-h2: clamp(1.9rem, 3.6vw, 3.25rem);
+  --t-h3: clamp(1.3rem, 2vw, 1.75rem);
+  --t-lead: clamp(1.02rem, 1.25vw, 1.2rem);
+  --lh-display: 0.98;
+  --lh-heading: 1.08;
+  --lh-body: 1.7;
+}
+@media (min-width: 768px) {
+  :root { --gutter: 2rem; }
+}
+@media (min-width: 1280px) {
+  :root { --gutter: 3rem; }
+}
+
+/* Bangla: Noto Serif/Sans Bengali, roomier line-height, no uppercase tracking, gentler display sizes
+   so conjuncts and matras never clip. */
+:lang(bn) {
+  --font-serif: var(--font-serif-bn), var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-sans-bn), var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --t-display: clamp(2.2rem, 5.6vw, 5rem);
+  --t-h1: clamp(2rem, 4.2vw, 3.6rem);
+  --t-h2: clamp(1.7rem, 3.1vw, 2.75rem);
+  --t-h3: clamp(1.2rem, 1.8vw, 1.6rem);
+  --lh-display: 1.25;
+  --lh-heading: 1.32;
+  --lh-body: 1.85;
+  --tracking-eyebrow: 0.04em;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -59,31 +103,39 @@
     color: var(--color-charcoal);
     font-family: var(--font-sans);
     font-size: 15px;
-    line-height: 1.65;
+    line-height: var(--lh-body);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   @media (min-width: 768px) {
     body { font-size: 16px; }
   }
+  :lang(bn) body, body:lang(bn) { font-size: 15.5px; }
+  @media (min-width: 768px) {
+    body:lang(bn) { font-size: 16.5px; }
+  }
   h1, h2, h3, h4 {
     font-family: var(--font-serif);
     color: var(--color-burgundy);
     font-weight: 400;
-    line-height: 1.15;
-    letter-spacing: -0.005em;
+    line-height: var(--lh-heading);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
   }
+  :lang(bn) h1, :lang(bn) h2, :lang(bn) h3, :lang(bn) h4 { letter-spacing: 0; }
+  p { text-wrap: pretty; }
   ::selection {
     background: var(--color-burgundy);
     color: var(--color-cream);
   }
   :focus-visible {
     outline: 2px solid var(--color-burgundy);
-    outline-offset: 2px;
+    outline-offset: 3px;
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
@@ -91,6 +143,15 @@
 }
 
 @layer components {
+  /* ── Typography ── */
+  .t-display { font-family: var(--font-serif); font-size: var(--t-display); line-height: var(--lh-display); letter-spacing: -0.02em; }
+  .t-h1 { font-family: var(--font-serif); font-size: var(--t-h1); line-height: var(--lh-heading); }
+  .t-h2 { font-family: var(--font-serif); font-size: var(--t-h2); line-height: var(--lh-heading); }
+  .t-h3 { font-family: var(--font-serif); font-size: var(--t-h3); line-height: 1.25; }
+  .t-lead { font-size: var(--t-lead); line-height: 1.65; }
+  :lang(bn) .t-display { letter-spacing: 0; }
+  /* Bengali has no true italic — browsers would fake a slant. Keep Bangla upright. */
+  :lang(bn) em, :lang(bn) i, :lang(bn) .italic { font-style: normal; }
   .eyebrow {
     font-family: var(--font-sans);
     font-size: 11px;
@@ -99,55 +160,91 @@
     text-transform: uppercase;
   }
   @media (min-width: 768px) {
-    .eyebrow { font-size: 12px; }
+    .eyebrow { font-size: 11.5px; }
   }
-  .container-x {
-    width: 100%;
-    max-width: 1280px;
-    margin-inline: auto;
-    padding-inline: 1rem;
+  :lang(bn) .eyebrow { text-transform: none; font-size: 13px; font-weight: 500; }
+
+  /* ── Widths & rhythm ── */
+  .container-x { width: 100%; max-width: var(--w-content); margin-inline: auto; padding-inline: var(--gutter); }
+  .container-wide { width: 100%; max-width: var(--w-wide); margin-inline: auto; padding-inline: var(--gutter); }
+  .measure { max-width: var(--w-text); }
+  .section-y { padding-block: var(--space-section); }
+  .block-y { padding-block: var(--space-block); }
+
+  /* ── Images ── */
+  .ratio-portrait { aspect-ratio: 4 / 5; }
+  .ratio-tall { aspect-ratio: 3 / 4; }
+  .ratio-landscape { aspect-ratio: 3 / 2; }
+  .ratio-cinema { aspect-ratio: 16 / 9; }
+  .img-zoom { transition: transform 900ms var(--ease-out-soft); }
+  .group:hover .img-zoom { transform: scale(1.035); }
+  @media (hover: none) {
+    .group:hover .img-zoom { transform: none; }
   }
-  @media (min-width: 768px) {
-    .container-x { padding-inline: 2rem; }
+
+  /* ── Quiet link: text with an underline that draws in ── */
+  .link-quiet {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 100% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    padding-bottom: 2px;
+    transition: background-size 300ms var(--ease-out-soft);
   }
-  .section-y {
-    padding-block: 4rem;
-  }
-  @media (min-width: 1024px) {
-    .section-y { padding-block: 6.5rem; }
-  }
-  /* Rich text from the CMS (product descriptions, policy pages) */
-  .prose-ambr {
-    max-width: 68ch;
-    color: var(--color-charcoal);
-  }
-  .prose-ambr > * + * { margin-top: 1em; }
-  .prose-ambr h2 { font-size: 1.5rem; margin-top: 2em; }
-  .prose-ambr h3 { font-size: 1.2rem; margin-top: 1.6em; }
-  .prose-ambr ul { list-style: none; padding-left: 0; }
-  .prose-ambr ul > li { position: relative; padding-left: 1.25em; }
-  .prose-ambr ul > li + li { margin-top: 0.4em; }
-  .prose-ambr ul > li::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0.72em;
-    width: 6px;
-    height: 1px;
-    background: var(--color-burgundy);
-  }
-  .prose-ambr ol { list-style: decimal; padding-left: 1.25em; }
-  .prose-ambr a { color: var(--color-burgundy); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--color-rose); }
-  .prose-ambr strong { font-weight: 600; color: var(--color-burgundy); }
-  .prose-ambr blockquote { border-left: 1px solid var(--color-gold); padding-left: 1rem; font-family: var(--font-serif); font-style: italic; }
+  .link-quiet:hover { background-size: 35% 1px; }
   .link-underline {
     background-image: linear-gradient(currentColor, currentColor);
     background-size: 0% 1px;
     background-position: 0 100%;
     background-repeat: no-repeat;
-    transition: background-size 200ms ease-out;
+    transition: background-size 250ms var(--ease-out-soft);
   }
-  .link-underline:hover { background-size: 100% 1px; }
+  .link-underline:hover, .link-underline[aria-current="page"] { background-size: 100% 1px; }
+
+  /* ── Hairline rule (gold) ── */
+  .rule { display: block; height: 1px; width: 2.5rem; background: var(--color-gold); }
+
+  /* ── Section reveal: CSS scroll-driven, no JS. Content is always visible without support. ── */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal-up linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 55%;
+      }
+    }
+  }
+  @keyframes reveal-up {
+    from { opacity: 0; transform: translateY(28px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ── Rich text from the CMS (product stories, pages, journal) ── */
+  .prose-ambr { max-width: 68ch; color: var(--color-charcoal); }
+  .prose-ambr > * + * { margin-top: 1em; }
+  .prose-ambr h2 { font-size: var(--t-h3); margin-top: 2.2em; }
+  .prose-ambr h3 { font-size: 1.2rem; margin-top: 1.6em; }
+  .prose-ambr ul { list-style: none; padding-left: 0; }
+  .prose-ambr ul > li { position: relative; padding-left: 1.4em; }
+  .prose-ambr ul > li + li { margin-top: 0.45em; }
+  .prose-ambr ul > li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.85em;
+    width: 0.7em;
+    height: 1px;
+    background: var(--color-gold);
+  }
+  .prose-ambr ol { list-style: decimal; padding-left: 1.25em; }
+  .prose-ambr a { color: var(--color-burgundy); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--color-rose); }
+  .prose-ambr strong { font-weight: 600; color: var(--color-burgundy); }
+  .prose-ambr blockquote { border-left: 1px solid var(--color-gold); padding-left: 1rem; font-family: var(--font-serif); font-style: italic; }
+  .prose-lg { font-size: 1.06rem; }
+  @media (min-width: 768px) {
+    .prose-lg { font-size: 1.12rem; }
+  }
+
   .no-scrollbar { scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
 }
@@ -155,4 +252,10 @@
 @media print {
   .no-print { display: none !important; }
   body { background: #fff; }
+}
+
+/* Button labels: tracked uppercase in English; natural case in Bangla (layered so utilities still win) */
+@layer components {
+  .btn-text { text-transform: uppercase; letter-spacing: 0.16em; }
+  :lang(bn) .btn-text { text-transform: none; letter-spacing: 0.01em; font-size: 14px; }
 }

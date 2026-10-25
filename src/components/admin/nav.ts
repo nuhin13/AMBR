@@ -45,6 +45,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/content/homepage", label: "Homepage", permission: "content:manage", icon: "Home" },
       { href: "/admin/content/pages", label: "Pages & policies", permission: "content:manage", icon: "FileText" },
       { href: "/admin/content/faq", label: "FAQ", permission: "content:manage", icon: "HelpCircle" },
+      { href: "/admin/content/journal", label: "Journal", permission: "content:manage", icon: "BookOpen" },
+      { href: "/admin/content/translations", label: "Translations (বাংলা)", permission: "content:manage", icon: "Languages" },
     ],
   },
   {

@@ -4,6 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/client";
 
 /** Side drawer / bottom sheet / centred modal built on Radix Dialog (focus trap, Esc, aria). */
 export function Sheet({
@@ -25,6 +26,7 @@ export function Sheet({
   footer?: ReactNode;
   className?: string;
 }) {
+  const { t } = useI18n();
   const position = {
     right: "inset-y-0 right-0 h-full w-full max-w-[440px] animate-slide-in-right",
     left: "inset-y-0 left-0 h-full w-[86%] max-w-[380px] animate-slide-in-left",
@@ -35,8 +37,8 @@ export function Sheet({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-charcoal/40 backdrop-blur-[2px] animate-fade-in" />
-        <Dialog.Content className={cn("fixed z-50 flex flex-col bg-cream shadow-2xl focus:outline-none", position, className)}>
-          <div className="flex items-center justify-between gap-4 border-b border-beige px-5 py-4">
+        <Dialog.Content className={cn("fixed z-50 flex flex-col bg-cream shadow-[0_30px_80px_-20px_rgba(58,12,26,0.45)] focus:outline-none", position, className)}>
+          <div className="flex items-center justify-between gap-4 border-b border-burgundy/10 px-5 py-4 md:px-6">
             <div>
               <Dialog.Title className="font-serif text-xl text-burgundy">{title}</Dialog.Title>
               {description ? (
@@ -45,12 +47,12 @@ export function Sheet({
                 <Dialog.Description className="sr-only">{typeof title === "string" ? title : "Dialog"}</Dialog.Description>
               )}
             </div>
-            <Dialog.Close className="-mr-2 rounded-full p-2 text-burgundy hover:bg-beige/60" aria-label="Close">
+            <Dialog.Close className="-mr-2 rounded-full p-2 text-burgundy hover:bg-beige/60" aria-label={t.common.close}>
               <X className="size-5" />
             </Dialog.Close>
           </div>
           <div className="flex-1 overflow-y-auto overscroll-contain">{children}</div>
-          {footer && <div className="border-t border-beige bg-cream-light px-5 py-4">{footer}</div>}
+          {footer && <div className="border-t border-burgundy/10 bg-cream-light px-5 py-5 md:px-6">{footer}</div>}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

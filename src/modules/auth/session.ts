@@ -56,8 +56,14 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   return { id, name, email, phone, role };
 });
 
+/** Account pages: sends signed-out visitors to the sign-in page of their language. */
 export async function requireUser(next = "/account") {
   const user = await getCurrentUser();
-  if (!user) redirect(`/login?next=${encodeURIComponent(next)}`);
+  if (!user) {
+    const { getLocale } = await import("@/i18n/server");
+    const { localePath } = await import("@/i18n/config");
+    const locale = await getLocale();
+    redirect(`${localePath(locale, "/login")}?next=${encodeURIComponent(localePath(locale, next))}`);
+  }
   return user;
 }

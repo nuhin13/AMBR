@@ -2,6 +2,7 @@ import "server-only";
 import type { MovementType } from "@prisma/client";
 import type { Tx } from "@/lib/db";
 import { UserFacingError } from "@/lib/action-result";
+import { LocalizedError } from "@/lib/i18n-errors";
 
 /**
  * All stock changes go through these functions. Each one is a single guarded SQL
@@ -17,7 +18,7 @@ async function record(tx: Tx, variantId: string, type: MovementType, quantity: n
   });
 }
 
-export class OutOfStockError extends UserFacingError {}
+export class OutOfStockError extends LocalizedError {}
 
 /** Reserve stock for an order. Throws OutOfStockError when not enough sellable stock exists. */
 export async function reserveStock(tx: Tx, variantId: string, qty: number, orderId: string, label: string) {
@@ -25,7 +26,7 @@ export async function reserveStock(tx: Tx, variantId: string, qty: number, order
     UPDATE "Inventory" SET "reserved" = "reserved" + ${qty}, "updatedAt" = now()
     WHERE "variantId" = ${variantId} AND "onHand" - "reserved" >= ${qty}
     RETURNING "onHand", "reserved"`;
-  if (rows.length === 0) throw new OutOfStockError(`Sorry — ${label} just sold out or has less stock than you selected. Please update your bag.`);
+  if (rows.length === 0) throw new OutOfStockError("errors.outOfStock", { name: label });
   await record(tx, variantId, "ORDER_RESERVE", qty, rows[0], { orderId });
 }
 

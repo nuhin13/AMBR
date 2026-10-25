@@ -18,7 +18,7 @@ const href = z.preprocess((v) => (v === "" ? undefined : v), z.string().trim().m
 
 const bannerSchema = z.object({
   id: z.string().optional(),
-  placement: z.enum(["HOME_HERO", "ANNOUNCEMENT", "PROMO"]),
+  placement: z.enum(["HOME_HERO", "ANNOUNCEMENT", "PROMO", "DISCOVERY", "STORY"]),
   eyebrow: zOptText(60),
   title: zText(160).min(2, "Title is required"),
   subtitle: zOptText(300),
@@ -96,12 +96,20 @@ export async function saveHomepageSectionsAction(fd: FormData): Promise<ActionRe
     const keys = HOMEPAGE_SECTIONS.map((s) => s.key as string);
     if (order.length !== keys.length || !order.every((k) => keys.includes(k))) throw new UserFacingError("Section list is out of date. Reload and try again.");
     const obj = formObject(fd);
+    const text = (k: string) => obj[k]?.trim().slice(0, 300) || null;
+    const sectionFields = (key: string) => ({
+      isEnabled: fd.get(`enabled_${key}`) === "on",
+      title: text(`title_${key}`),
+      subtitle: text(`subtitle_${key}`),
+      titleBn: text(`titleBn_${key}`),
+      subtitleBn: text(`subtitleBn_${key}`),
+    });
     await db.$transaction(
       order.map((key, i) =>
         db.homepageSection.upsert({
           where: { key },
-          create: { key, sortOrder: i, isEnabled: fd.get(`enabled_${key}`) === "on", title: obj[`title_${key}`]?.trim() || null, subtitle: obj[`subtitle_${key}`]?.trim() || null },
-          update: { sortOrder: i, isEnabled: fd.get(`enabled_${key}`) === "on", title: obj[`title_${key}`]?.trim() || null, subtitle: obj[`subtitle_${key}`]?.trim() || null },
+          create: { key, sortOrder: i, ...sectionFields(key) },
+          update: { sortOrder: i, ...sectionFields(key) },
         }),
       ),
     );
@@ -174,7 +182,7 @@ export async function saveSettingsAction(fd: FormData): Promise<ActionResult> {
       else if (typeof v === "number") next[k] = k in obj ? Number(obj[k]) : v;
       else next[k] = k in obj ? obj[k].trim() : v;
     }
-    if (group === "payments" && !Object.entries(next).some(([k, v]) => k !== "codNote" && v === true)) throw new UserFacingError("Keep at least one payment method enabled, or customers can't check out.");
+    if (group === "payments" && !Object.values(next).some((v) => v === true)) throw new UserFacingError("Keep at least one payment method enabled, or customers can't check out.");
     if (group === "social") for (const k of ["facebook", "instagram"]) if (next[k] && !/^https:\/\//.test(String(next[k]))) throw new UserFacingError("Social links must start with https://");
     if (group === "store" && next.email && !z.string().email().safeParse(next.email).success) throw new UserFacingError("Enter a valid support email.");
     const parsed = (settingsSchemas[group] as z.ZodType).parse(next) as Prisma.InputJsonValue;
@@ -207,6 +215,73 @@ export async function setSubscriberStatusAction(fd: FormData): Promise<ActionRes
     await db.newsletterSubscriber.update({ where: { id }, data: { status } });
     await audit({ actorId: user.id, action: "newsletter.status", entityType: "NewsletterSubscriber", entityId: id, after: { status } });
     return { ok: true, message: "Updated." };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+// ───────────── Journal (articles) ─────────────
+
+const articleSchema = z.object({
+  id: z.string().optional(),
+  title: zText(160).min(3, "Title is required"),
+  slug: zOptText(90),
+  excerpt: zText(400).min(10, "Add a short excerpt"),
+  body: z.string().trim().min(20, "The article is too short").max(60000),
+  coverAlt: zOptText(160),
+  authorName: zOptText(80),
+  seoTitle: zOptText(70),
+  seoDescription: zOptText(170),
+  status: z.enum(["DRAFT", "PUBLISHED"]),
+  removeCover: zBool.optional(),
+});
+
+/** Saves the ENGLISH article. The Bangla version is edited separately and has its own status. */
+export async function saveArticleAction(fd: FormData): Promise<ActionResult<{ id: string }>> {
+  try {
+    const user = await requirePermission("content:manage");
+    const input = articleSchema.parse(formObject(fd));
+    const { slugify } = await import("@/lib/utils");
+    const slug = slugify(input.slug || input.title);
+    if (!slug) throw new UserFacingError("Give the article a title with letters or numbers.");
+    const clash = await db.article.findFirst({ where: { slug, id: input.id ? { not: input.id } : undefined } });
+    if (clash) throw new UserFacingError(`The address “${slug}” is already used by another article.`);
+    const before = input.id ? await db.article.findUnique({ where: { id: input.id } }) : null;
+    if (input.id && !before) throw new UserFacingError("Article not found.");
+    const file = fd.get("cover");
+    const cover = file instanceof File && file.size > 0 ? (await storeImage(file, "journal")).url : undefined;
+    const body = /<[a-z][\s\S]*>/i.test(input.body) ? sanitizeRichText(input.body) : textToHtml(input.body);
+    const data = {
+      slug,
+      title: input.title,
+      excerpt: input.excerpt,
+      body,
+      coverAlt: input.coverAlt ?? null,
+      authorName: input.authorName ?? null,
+      seoTitle: input.seoTitle ?? null,
+      seoDescription: input.seoDescription ?? null,
+      status: input.status,
+      // First publication date is kept when re-publishing.
+      publishedAt: input.status === "PUBLISHED" ? (before?.publishedAt ?? new Date()) : (before?.publishedAt ?? null),
+      ...(cover ? { coverImage: cover } : input.removeCover ? { coverImage: null } : {}),
+    };
+    const a = input.id ? await db.article.update({ where: { id: input.id }, data }) : await db.article.create({ data });
+    await audit({ actorId: user.id, action: input.id ? "article.update" : "article.create", entityType: "Article", entityId: a.id, before: before ? { title: before.title, status: before.status } : undefined, after: { title: a.title, status: a.status } });
+    revalidateStore();
+    return { ok: true, data: { id: a.id }, message: input.status === "PUBLISHED" ? "Article saved and published." : "Article saved as draft." };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+export async function deleteArticleAction(fd: FormData): Promise<ActionResult> {
+  try {
+    const user = await requirePermission("content:manage");
+    const id = z.string().parse(fd.get("id"));
+    const a = await db.article.delete({ where: { id } });
+    await audit({ actorId: user.id, action: "article.delete", entityType: "Article", entityId: id, before: { title: a.title } });
+    revalidateStore();
+    return { ok: true, message: "Article deleted (both languages)." };
   } catch (e) {
     return toActionError(e);
   }

@@ -4,7 +4,7 @@
 
 This folder holds the planning, design and architecture documents for the AMBR e-commerce platform. They are written in order, and each phase builds on the one before it.
 
-**Current status (2026-10-25):** Phases 1–7 are built: storefront, accounts, checkout, admin dashboard, integrations in sandbox-ready form, and tests. The site runs locally with a clearly flagged demo catalogue. Phase 8 (production deployment) is documented and waits on the owner's accounts, domain access and real content. See the launch checklist.
+**Current status (2026-10-25):** Phases 1–7 are built: storefront, accounts, checkout, admin dashboard, integrations in sandbox-ready form, and tests. **Editorial redesign and full English/Bangla support are implemented** (see section 10). The site runs locally with a clearly flagged demo catalogue. Phase 8 (production deployment) is documented and waits on the owner's accounts, domain access and real content. See the launch checklist.
 
 ## Index
 
@@ -27,6 +27,9 @@ This folder holds the planning, design and architecture documents for the AMBR e
 | 09 | [09-deployment/deployment-guide.md](09-deployment/deployment-guide.md) | Vercel/VPS deployment, domain, monitoring, security | ✅ |
 | 09 | [09-deployment/backup-and-recovery.md](09-deployment/backup-and-recovery.md) | Backups, restore drill, recovering from mistakes | ✅ |
 | 09 | [09-deployment/launch-checklist.md](09-deployment/launch-checklist.md) | Everything to finish before going live | ⏳ Owner |
+| 10 | [10-redesign-and-bilingual/plan.md](10-redesign-and-bilingual/plan.md) | UI audit (why it felt boxy) and the redesign + bilingual plan | ✅ |
+| 10 | [10-redesign-and-bilingual/implementation.md](10-redesign-and-bilingual/implementation.md) | As built: editorial design system, `/en` + `/bn` architecture, bilingual admin, tests | ✅ |
+| 10 | [10-redesign-and-bilingual/asset-replacement-list.md](10-redesign-and-bilingual/asset-replacement-list.md) | Images needed to unlock the full editorial look | ⏳ Owner |
 
 ## Related folders in the repository
 

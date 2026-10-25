@@ -30,9 +30,10 @@ export const zOptTaka = z.preprocess(
 );
 export const zOptDate = z.preprocess((v) => (v === "" || v === undefined ? undefined : v), z.coerce.date().optional());
 
-/** Re-render ISR storefront pages after catalogue/content changes. */
+/** Re-render ISR storefront pages (both /en and /bn) after catalogue/content changes. */
 export function revalidateStore() {
   revalidatePath("/", "layout");
+  revalidatePath("/[locale]", "layout");
 }
 
 export const takaInput = (poisha: number | null | undefined) => (poisha === null || poisha === undefined ? "" : String(poisha / 100));

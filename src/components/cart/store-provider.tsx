@@ -16,6 +16,7 @@ import {
 import { getWishlistIdsAction, toggleWishlistAction } from "@/modules/customers/actions";
 import { useToast } from "@/components/ui/toast";
 import { trackAddToCart } from "@/components/analytics/events";
+import { useI18n } from "@/i18n/client";
 
 type StoreCtx = {
   cart: CartView | null;
@@ -47,6 +48,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [pending, startTransition] = useTransition();
   const toast = useToast();
   const router = useRouter();
+  const { t, href } = useI18n();
 
   const apply = useCallback(
     (r: ActionResult<CartView>) => {
@@ -119,9 +121,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleWishlist: async (productId) => {
         const r = await toggleWishlistAction(productId);
         if (!r.ok) {
-          if (r.error.includes("sign in")) {
-            toast("Sign in to save fragrances to your wishlist.", "info");
-            router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          if (r.error === t.errors.signInRequired) {
+            toast(t.product.wishlistSignIn, "info");
+            router.push(`${href("/login")}?next=${encodeURIComponent(window.location.pathname)}`);
           } else toast(r.error, "error");
           return;
         }
@@ -131,10 +133,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           else n.delete(productId);
           return n;
         });
-        toast(r.data?.saved ? "Saved to your wishlist" : "Removed from your wishlist");
+        toast(r.data?.saved ? t.product.wishlistSaved : t.product.wishlistRemoved);
       },
     }),
-    [cart, cartOpen, pending, refresh, wishlist, run, apply, toast, router],
+    [cart, cartOpen, pending, refresh, wishlist, run, apply, toast, router, t, href],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -33,8 +33,8 @@ export const can = (role: Role, permission: Permission) => (PERMISSIONS[permissi
  */
 export async function requirePermission(permission: Permission): Promise<SessionUser> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login?next=/admin");
-  if (!isStaff(user.role)) redirect("/");
+  if (!user) redirect("/en/login?next=/admin");
+  if (!isStaff(user.role)) redirect("/en");
   if (!can(user.role, permission)) redirect("/admin/forbidden");
   return user;
 }

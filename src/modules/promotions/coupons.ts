@@ -8,7 +8,7 @@ export const normaliseCode = (code: string) => code.trim().toUpperCase().replace
 /** Preview evaluation for the cart (no locking). */
 export async function previewCoupon(code: string, subtotal: number): Promise<{ coupon: Coupon | null; result: CouponEvaluation }> {
   const coupon = await db.coupon.findUnique({ where: { code: normaliseCode(code) } });
-  if (!coupon) return { coupon: null, result: { ok: false, reason: "We couldn't find that code." } };
+  if (!coupon) return { coupon: null, result: { ok: false, reason: "We couldn't find that code.", reasonKey: "errors.codeNotFound" } };
   return { coupon, result: evaluateCoupon(coupon, subtotal) };
 }
 
@@ -18,14 +18,14 @@ export async function previewCoupon(code: string, subtotal: number): Promise<{ c
  */
 export async function redeemCouponInTx(tx: Tx, code: string, subtotal: number, phone: string, userId: string | null) {
   const locked = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Coupon" WHERE "code" = ${normaliseCode(code)} FOR UPDATE`;
-  if (!locked[0]) return { coupon: null, result: { ok: false, reason: "We couldn't find that code." } as CouponEvaluation };
+  if (!locked[0]) return { coupon: null, result: { ok: false, reason: "We couldn't find that code.", reasonKey: "errors.codeNotFound" } as CouponEvaluation };
   const coupon = await tx.coupon.findUniqueOrThrow({ where: { id: locked[0].id } });
   let result = evaluateCoupon(coupon, subtotal);
   if (result.ok && coupon.perCustomerLimit !== null) {
     const used = await tx.couponRedemption.count({
       where: { couponId: coupon.id, OR: [{ phone }, ...(userId ? [{ userId }] : [])] },
     });
-    if (used >= coupon.perCustomerLimit) result = { ok: false, reason: "You've already used this code." };
+    if (used >= coupon.perCustomerLimit) result = { ok: false, reason: "You've already used this code.", reasonKey: "errors.codeUsed" };
   }
   if (result.ok) await tx.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
   return { coupon, result };

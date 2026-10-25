@@ -1,27 +1,29 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LLink } from "@/components/i18n/llink";
+import { useI18n } from "@/i18n/client";
+import { stripLocale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
-  { href: "/account", label: "Overview" },
-  { href: "/account/orders", label: "Orders" },
-  { href: "/account/addresses", label: "Addresses" },
-  { href: "/account/wishlist", label: "Wishlist" },
-  { href: "/account/profile", label: "Profile & password" },
-];
-
 export function AccountNav() {
-  const path = usePathname();
+  const path = stripLocale(usePathname() ?? "/");
+  const { t } = useI18n();
+  const links = [
+    { href: "/account", label: t.account.overview },
+    { href: "/account/orders", label: t.account.orders },
+    { href: "/account/addresses", label: t.account.addresses },
+    { href: "/account/wishlist", label: t.account.wishlist },
+    { href: "/account/profile", label: t.account.profile },
+  ];
   return (
-    <nav aria-label="Account" className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:px-0">
-      {LINKS.map((l) => {
+    <nav aria-label={t.account.kicker} className="no-scrollbar -mx-4 flex gap-6 overflow-x-auto border-b border-burgundy/10 px-4 lg:mx-0 lg:flex-col lg:gap-1 lg:border-b-0 lg:px-0">
+      {links.map((l) => {
         const active = l.href === "/account" ? path === l.href : path.startsWith(l.href);
         return (
-          <Link key={l.href} href={l.href} aria-current={active ? "page" : undefined} className={cn("shrink-0 px-4 py-2.5 text-[14px] lg:border-l-2 lg:px-4", active ? "bg-burgundy text-cream lg:border-burgundy lg:bg-transparent lg:text-burgundy lg:font-medium" : "text-charcoal hover:text-burgundy lg:border-transparent")}>
+          <LLink key={l.href} href={l.href} aria-current={active ? "page" : undefined} className={cn("shrink-0 border-b-2 py-3 text-[14.5px] transition-colors lg:border-b-0 lg:border-l-2 lg:py-2 lg:pl-4", active ? "border-burgundy text-burgundy" : "border-transparent text-charcoal/70 hover:text-burgundy")}>
             {l.label}
-          </Link>
+          </LLink>
         );
       })}
     </nav>

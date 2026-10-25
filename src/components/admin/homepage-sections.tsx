@@ -5,7 +5,9 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { ActionForm, SubmitButton } from "./action-form";
 import { saveHomepageSectionsAction } from "@/modules/content/admin-actions";
 
-type S = { key: string; label: string; isEnabled: boolean; title: string | null; subtitle: string | null };
+type S = { key: string; label: string; isEnabled: boolean; title: string | null; subtitle: string | null; titleBn: string | null; subtitleBn: string | null };
+
+const bnStyle = { fontFamily: "var(--font-sans-bn), var(--font-montserrat), sans-serif" } as const;
 
 export function HomepageSections({ sections }: { sections: S[] }) {
   const [order, setOrder] = useState(sections);
@@ -29,6 +31,8 @@ export function HomepageSections({ sections }: { sections: S[] }) {
           <div className="mt-3 grid gap-2 md:grid-cols-2">
             <input name={`title_${s.key}`} defaultValue={s.title ?? ""} placeholder="Custom heading (optional)" aria-label={`${s.label} heading`} className="h-10 border border-beige px-3 text-[13.5px] focus:border-burgundy focus:outline-none" />
             <input name={`subtitle_${s.key}`} defaultValue={s.subtitle ?? ""} placeholder="Custom supporting text (optional)" aria-label={`${s.label} supporting text`} className="h-10 border border-beige px-3 text-[13.5px] focus:border-burgundy focus:outline-none" />
+            <input name={`titleBn_${s.key}`} defaultValue={s.titleBn ?? ""} placeholder="বাংলা শিরোনাম (ঐচ্ছিক)" lang="bn" style={bnStyle} aria-label={`${s.label} Bangla heading`} className="h-10 border border-beige px-3 text-[13.5px] focus:border-burgundy focus:outline-none" />
+            <input name={`subtitleBn_${s.key}`} defaultValue={s.subtitleBn ?? ""} placeholder="বাংলা সহায়ক লেখা (ঐচ্ছিক)" lang="bn" style={bnStyle} aria-label={`${s.label} Bangla supporting text`} className="h-10 border border-beige px-3 text-[13.5px] focus:border-burgundy focus:outline-none" />
           </div>
         </div>
       ))}

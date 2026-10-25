@@ -14,6 +14,9 @@ export const storeSchema = z.object({
   description: z
     .string()
     .default("AMBR creates inspired perfumes and attars for people who love smelling good — thoughtfully composed, honestly priced, made for everyday life in Bangladesh."),
+  descriptionBn: z
+    .string()
+    .default("AMBR তৈরি করে ইন্সপায়ার্ড পারফিউম ও আতর — যারা সুন্দর সুবাস ভালোবাসেন তাদের জন্য। যত্নে বাছাই করা, ন্যায্য দামে, বাংলাদেশের প্রতিদিনের জীবনের জন্য।"),
   legalName: z.string().default(""),
   tradeLicense: z.string().default(""),
   email: z.string().default(""),
@@ -34,6 +37,7 @@ export const paymentSettingsSchema = z.object({
   nagad: z.boolean().default(false),
   card: z.boolean().default(false),
   codNote: z.string().default("Pay in cash when your order arrives. We'll call to confirm your order before dispatch."),
+  codNoteBn: z.string().default("পণ্য হাতে পেয়ে নগদ টাকা দিন। পাঠানোর আগে আমরা কল করে অর্ডার নিশ্চিত করব।"),
 });
 
 export const seoSchema = z.object({
@@ -41,6 +45,10 @@ export const seoSchema = z.object({
   defaultDescription: z
     .string()
     .default("Discover AMBR inspired perfumes and attars — thoughtfully composed fragrances at honest prices. Cash on delivery across Bangladesh."),
+  defaultTitleBn: z.string().default("AMBR — বাংলাদেশে ইন্সপায়ার্ড পারফিউম ও আতর"),
+  defaultDescriptionBn: z
+    .string()
+    .default("AMBR-এর ইন্সপায়ার্ড পারফিউম ও আতর — যত্নে বাছাই করা সুবাস, ন্যায্য দামে। সারা বাংলাদেশে ক্যাশ অন ডেলিভারি।"),
 });
 
 export const checkoutSchema = z.object({

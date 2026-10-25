@@ -3,6 +3,7 @@ import type { PaymentMethod, PaymentProvider, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { UserFacingError } from "@/lib/action-result";
+import { LocalizedError } from "@/lib/i18n-errors";
 import { sendOrderConfirmation } from "@/modules/checkout/notify";
 import { trackServerPurchase } from "@/modules/analytics/capi";
 import { bkashInitiate } from "./providers/bkash";
@@ -20,11 +21,11 @@ const strip = (raw: unknown) => JSON.parse(JSON.stringify(raw ?? null)) as Prism
  */
 export async function startOnlinePayment(orderId: string, clientIp: string): Promise<string> {
   const order = await db.order.findUnique({ where: { id: orderId } });
-  if (!order) throw new UserFacingError("Order not found.");
+  if (!order) throw new LocalizedError("errors.orderNotFound");
   if (order.paymentMethod === "COD") throw new UserFacingError("This order is cash on delivery.");
-  if (order.paymentStatus === "PAID") throw new UserFacingError("This order is already paid.");
+  if (order.paymentStatus === "PAID") throw new LocalizedError("errors.alreadyPaid");
   if (order.status !== "PENDING" || (order.reservationExpiresAt && order.reservationExpiresAt < new Date())) {
-    throw new UserFacingError("This order's payment window has closed. Please place a new order.");
+    throw new LocalizedError("errors.paymentWindowClosed");
   }
   const provider = PROVIDER_FOR[order.paymentMethod];
   const payment = await db.payment.create({ data: { orderId: order.id, provider, amount: order.total, status: "PENDING" } });
@@ -43,7 +44,7 @@ export async function startOnlinePayment(orderId: string, clientIp: string): Pro
   } catch (e) {
     logger.error("payment.initiate_failed", { orderNumber: order.orderNumber, provider, error: e });
     await db.payment.update({ where: { id: payment.id }, data: { status: "FAILED", rawResponse: strip({ error: e instanceof Error ? e.message : String(e) }) } });
-    throw new UserFacingError("We couldn't reach the payment gateway. Please try again, or choose another payment method.");
+    throw new LocalizedError("errors.gateway");
   }
 }
 
@@ -97,7 +98,7 @@ export async function switchToCashOnDelivery(orderId: string) {
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
     const order = await tx.order.findUnique({ where: { id: orderId } });
-    if (!order || order.status !== "PENDING" || order.paymentStatus === "PAID") throw new UserFacingError("This order can no longer be changed.");
+    if (!order || order.status !== "PENDING" || order.paymentStatus === "PAID") throw new LocalizedError("errors.orderLocked");
     await tx.payment.updateMany({ where: { orderId, status: "PENDING" }, data: { status: "FAILED" } });
     await tx.payment.create({ data: { orderId, provider: "COD", amount: order.total, status: "PENDING" } });
     const o = await tx.order.update({ where: { id: orderId }, data: { paymentMethod: "COD", paymentStatus: "UNPAID", reservationExpiresAt: null } });

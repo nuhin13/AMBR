@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
 import type { PaymentMethod } from "@prisma/client";
@@ -12,24 +11,19 @@ import { placeOrderAction } from "@/modules/checkout/actions";
 import { useStore } from "@/components/cart/store-provider";
 import { CouponField } from "@/components/cart/coupon-field";
 import { ProductImage } from "@/components/product/product-image";
+import { LLink } from "@/components/i18n/llink";
 import { Input, Select, Textarea, Checkbox } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { trackBeginCheckout } from "@/components/analytics/events";
-import { formatBDT } from "@/lib/money";
+import { useI18n } from "@/i18n/client";
+import { translateMessage } from "@/i18n/translate";
 import { cn } from "@/lib/utils";
 import { shippingFee } from "@/modules/pricing";
 
 type Geo = {
-  districts: { id: number; name: string; nameBn: string | null; shippingZoneId: string; upazilas: { id: number; name: string; shippingZoneId: string | null; isCityArea: boolean }[] }[];
+  districts: { id: number; name: string; nameBn: string | null; shippingZoneId: string; upazilas: { id: number; name: string; nameBn: string | null; shippingZoneId: string | null; isCityArea: boolean }[] }[];
   zones: { id: string; name: string; fee: number; freeShippingThreshold: number | null; estimatedDays: string }[];
-};
-
-const METHOD_INFO: Record<PaymentMethod, { title: string; body: string }> = {
-  COD: { title: "Cash on Delivery", body: "Pay in cash when your order arrives." },
-  BKASH: { title: "bKash", body: "Pay securely on bKash's official checkout." },
-  NAGAD: { title: "Nagad", body: "Pay securely on Nagad's official checkout." },
-  CARD: { title: "Debit / Credit Card", body: "Visa, Mastercard and more via SSLCommerz secure checkout." },
 };
 
 type FormValues = Omit<CheckoutInput, "acceptTerms"> & { acceptTerms: boolean };
@@ -50,9 +44,11 @@ export function CheckoutForm({
   const { cart } = useStore();
   const router = useRouter();
   const toast = useToast();
+  const { t, fmt, price, locale } = useI18n();
   const [submitting, start] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const [key] = useState(() => crypto.randomUUID());
+  const place = (n: { name: string; nameBn: string | null }) => (locale === "bn" && n.nameBn ? n.nameBn : n.name);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(checkoutSchema) as never,
@@ -72,11 +68,15 @@ export function CheckoutForm({
     },
   });
   const { register, handleSubmit, formState, setValue, control } = form;
-  const errors = formState.errors;
+  const err = (name: keyof FormValues) => {
+    const m = formState.errors[name]?.message;
+    return m ? translateMessage(t, String(m)) : undefined;
+  };
   const districtId = Number(useWatch({ control, name: "districtId" })) || 0;
   const upazilaId = Number(useWatch({ control, name: "upazilaId" })) || 0;
   const method = useWatch({ control, name: "paymentMethod" });
 
+  const districts = useMemo(() => [...geography.districts].sort((a, b) => place(a).localeCompare(place(b), locale === "bn" ? "bn" : "en")), [geography.districts, locale]); // eslint-disable-line react-hooks/exhaustive-deps
   const district = geography.districts.find((d) => d.id === districtId);
   const upazila = district?.upazilas.find((u) => u.id === upazilaId);
   const zone = useMemo(() => {
@@ -94,7 +94,7 @@ export function CheckoutForm({
   if (cart.lines.length === 0) {
     return (
       <p className="mt-10 text-muted">
-        Your bag is empty. <Link href="/shop" className="text-burgundy underline">Continue shopping</Link>
+        {t.cart.empty}. <LLink href="/shop" className="link-underline text-burgundy">{t.common.continueShopping}</LLink>
       </p>
     );
   }
@@ -121,81 +121,74 @@ export function CheckoutForm({
     });
   };
 
+  const agree = fmt(t.checkout.agree, { terms: "\u0000", returns: "\u0001" }).split(/([\u0000\u0001])/);
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 grid gap-10 lg:grid-cols-[1fr_420px] lg:gap-16">
-      <div className="space-y-10">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-10 grid gap-14 lg:grid-cols-12 lg:gap-16">
+      <div className="space-y-14 lg:col-span-7">
         <section aria-labelledby="contact-h">
-          <h2 id="contact-h" className="mb-5 flex items-center gap-3 text-[22px]"><Step n={1} />Contact</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Full name" autoComplete="name" required error={errors.customerName?.message} {...register("customerName")} className="sm:col-span-2" />
-            <Input label="Mobile number" type="tel" inputMode="tel" autoComplete="tel-national" prefix="+88" placeholder="01XXXXXXXXX" required error={errors.phone?.message} hint="We'll call or SMS about your delivery" {...register("phone")} />
-            <Input label="Email (optional)" type="email" autoComplete="email" error={errors.email?.message} hint="For your order receipt" {...register("email")} />
+          <h2 id="contact-h" className="t-h3 mb-6 flex items-baseline gap-4"><Step n={1} />{t.checkout.contact}</h2>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Input label={t.checkout.fullName} autoComplete="name" required error={err("customerName")} {...register("customerName")} className="sm:col-span-2" />
+            <Input label={t.checkout.mobile} type="tel" inputMode="tel" autoComplete="tel-national" prefix="+88" placeholder="01XXXXXXXXX" required error={err("phone")} hint={t.checkout.mobileHint} {...register("phone")} />
+            <Input label={t.checkout.email} type="email" autoComplete="email" error={err("email")} hint={t.checkout.emailHint} {...register("email")} />
           </div>
         </section>
 
         <section aria-labelledby="addr-h">
-          <h2 id="addr-h" className="mb-5 flex items-center gap-3 text-[22px]"><Step n={2} />Delivery address</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="District"
-              required
-              error={errors.districtId?.message}
-              {...register("districtId", { onChange: () => setValue("upazilaId", "" as unknown as number) })}
-            >
-              <option value="">Choose district</option>
-              {geography.districts.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}{d.nameBn ? ` · ${d.nameBn}` : ""}</option>
+          <h2 id="addr-h" className="t-h3 mb-6 flex items-baseline gap-4"><Step n={2} />{t.checkout.address}</h2>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Select label={t.checkout.district} required error={err("districtId")} {...register("districtId", { onChange: () => setValue("upazilaId", "" as unknown as number) })}>
+              <option value="">{t.checkout.chooseDistrict}</option>
+              {districts.map((d) => (
+                <option key={d.id} value={d.id}>{locale === "bn" ? `${place(d)}${d.nameBn ? ` · ${d.name}` : ""}` : `${d.name}${d.nameBn ? ` · ${d.nameBn}` : ""}`}</option>
               ))}
             </Select>
-            <Select label="City / Upazila / Area" required disabled={!district} error={errors.upazilaId?.message} {...register("upazilaId")}>
-              <option value="">{district ? "Choose area" : "Choose district first"}</option>
+            <Select label={t.checkout.area} required disabled={!district} error={err("upazilaId")} {...register("upazilaId")}>
+              <option value="">{district ? t.checkout.chooseArea : t.checkout.chooseDistrictFirst}</option>
               {cityAreas.length > 0 && (
-                <optgroup label={`${district?.name} City`}>
-                  {cityAreas.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                <optgroup label={fmt(t.checkout.cityAreas, { district: district ? place(district) : "" })}>
+                  {cityAreas.map((u) => <option key={u.id} value={u.id}>{place(u)}</option>)}
                 </optgroup>
               )}
               {otherAreas.length > 0 && (
-                <optgroup label={cityAreas.length ? "Upazilas" : "Upazila"}>
-                  {otherAreas.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                <optgroup label={t.checkout.upazilas}>
+                  {otherAreas.map((u) => <option key={u.id} value={u.id}>{place(u)}</option>)}
                 </optgroup>
               )}
             </Select>
-            <Textarea label="Full address" required rows={2} placeholder="House, road, block/sector, area, landmark" error={errors.addressLine?.message} {...register("addressLine")} className="sm:col-span-2" />
-            <Textarea label="Delivery instructions (optional)" rows={2} placeholder="e.g. Call before arriving; office hours only" error={errors.deliveryInstructions?.message} {...register("deliveryInstructions")} className="sm:col-span-2" />
-            {signedIn && <Checkbox label="Save this address to my account" {...register("saveAddress")} className="sm:col-span-2" />}
+            <Textarea label={t.checkout.fullAddress} required rows={2} placeholder={t.checkout.fullAddressPlaceholder} error={err("addressLine")} {...register("addressLine")} className="sm:col-span-2" />
+            <Textarea label={t.checkout.instructions} rows={2} placeholder={t.checkout.instructionsPlaceholder} error={err("deliveryInstructions")} {...register("deliveryInstructions")} className="sm:col-span-2" />
+            {signedIn && <Checkbox label={t.checkout.saveAddress} {...register("saveAddress")} className="sm:col-span-2" />}
           </div>
-          {zone && (
-            <p className="mt-4 text-[13.5px] text-muted">
-              Delivering to <span className="text-charcoal">{zone.name}</span> · estimated {zone.estimatedDays}
-            </p>
-          )}
+          {zone && <p className="mt-5 text-[13.5px] text-muted">{fmt(t.checkout.deliveringTo, { zone: zone.name, days: zone.estimatedDays })}</p>}
         </section>
 
         <section aria-labelledby="pay-h">
-          <h2 id="pay-h" className="mb-5 flex items-center gap-3 text-[22px]"><Step n={3} />Payment</h2>
+          <h2 id="pay-h" className="t-h3 mb-6 flex items-baseline gap-4"><Step n={3} />{t.checkout.payment}</h2>
           {methods.length === 0 ? (
-            <p className="text-error">No payment method is available right now. Please contact us to place your order.</p>
+            <p className="text-error">{t.checkout.noMethods}</p>
           ) : (
-            <div className="space-y-3" role="radiogroup" aria-label="Payment method">
+            <div className="divide-y divide-burgundy/12 border-y border-burgundy/12" role="radiogroup" aria-label={t.checkout.payment}>
               {methods.map((m) => (
-                <label key={m} className={cn("flex cursor-pointer items-start gap-4 border bg-white p-4 transition-colors", method === m ? "border-burgundy ring-1 ring-burgundy" : "border-beige hover:border-burgundy/50")}>
-                  <input type="radio" value={m} {...register("paymentMethod")} className="mt-1 size-4 accent-burgundy" />
+                <label key={m} className="flex cursor-pointer items-start gap-4 py-5">
+                  <input type="radio" value={m} {...register("paymentMethod")} className="mt-1.5 size-4 accent-burgundy" />
                   <span>
-                    <span className="block font-medium text-charcoal">{METHOD_INFO[m].title}</span>
-                    <span className="block text-[13.5px] text-muted">{m === "COD" ? codNote : METHOD_INFO[m].body}</span>
+                    <span className={cn("block font-serif text-[19px]", method === m ? "text-burgundy" : "text-charcoal")}>{t.labels.paymentMethod[m]}</span>
+                    <span className="mt-0.5 block text-[13.5px] text-muted">{m === "COD" ? codNote : t.checkout.methodInfo[m]}</span>
                   </span>
                 </label>
               ))}
             </div>
           )}
-          {errors.paymentMethod && <p className="mt-2 text-[13px] text-error">{errors.paymentMethod.message}</p>}
+          {err("paymentMethod") && <p className="mt-2 text-[13px] text-error">{err("paymentMethod")}</p>}
         </section>
       </div>
 
-      <aside className="lg:sticky lg:top-[120px] lg:self-start">
-        <div className="space-y-5 bg-cream-light p-5 md:p-6">
-          <h2 className="text-[22px]">Order summary</h2>
-          <ul className="divide-y divide-beige">
+      <aside className="lg:sticky lg:top-[100px] lg:col-span-4 lg:col-start-9 lg:self-start">
+        <div className="space-y-6 bg-cream-light p-6 md:p-7">
+          <h2 className="t-h3">{t.checkout.summary}</h2>
+          <ul className="divide-y divide-burgundy/10">
             {cart.lines.map((l) => (
               <li key={l.id} className="flex gap-3 py-3">
                 <div className="relative w-14 shrink-0">
@@ -205,35 +198,42 @@ export function CheckoutForm({
                 <div className="min-w-0 flex-1 text-[14px]">
                   <p className="truncate font-serif text-[16px] text-burgundy">{l.productName}</p>
                   <p className="text-muted">{l.variantLabel}</p>
-                  {l.issue && <p className="text-error">{l.issue}</p>}
                 </div>
-                <p className="text-[14px] tabular-nums">{formatBDT(l.unitPrice * l.quantity)}</p>
+                <p className="text-[14px] tabular-nums">{price(l.unitPrice * l.quantity)}</p>
               </li>
             ))}
           </ul>
           <CouponField />
           <dl className="space-y-2 text-[14.5px]">
-            <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular-nums">{formatBDT(cart.subtotal)}</dd></div>
-            {cart.discount > 0 && <div className="flex justify-between text-success"><dt>Discount</dt><dd className="tabular-nums">−{formatBDT(cart.discount)}</dd></div>}
+            <div className="flex justify-between"><dt className="text-muted">{t.cart.subtotal}</dt><dd className="tabular-nums">{price(cart.subtotal)}</dd></div>
+            {cart.discount > 0 && <div className="flex justify-between text-success"><dt>{t.cart.discount}</dt><dd className="tabular-nums">−{price(cart.discount)}</dd></div>}
             <div className="flex justify-between">
-              <dt className="text-muted">Delivery</dt>
-              <dd className="tabular-nums">{fee === null ? <span className="text-muted">Choose your area</span> : fee === 0 ? "Free" : formatBDT(fee)}</dd>
+              <dt className="text-muted">{t.cart.delivery}</dt>
+              <dd className="tabular-nums">{fee === null ? <span className="text-muted">{t.checkout.chooseYourArea}</span> : fee === 0 ? t.cart.free : price(fee)}</dd>
             </div>
-            <div className="flex justify-between border-t border-beige pt-3 text-[17px] font-medium">
-              <dt>Total</dt>
-              <dd className="tabular-nums text-burgundy">{formatBDT(total)}</dd>
+            <div className="flex justify-between border-t border-burgundy/15 pt-4 text-[18px]">
+              <dt>{t.cart.total}</dt>
+              <dd className="tabular-nums text-burgundy">{price(total)}</dd>
             </div>
           </dl>
           <Checkbox
-            label={<>I agree to the <Link href="/policies/terms" target="_blank" className="text-burgundy underline">terms</Link> and <Link href="/policies/returns" target="_blank" className="text-burgundy underline">return policy</Link>.</>}
-            error={errors.acceptTerms?.message}
+            label={
+              <>
+                {agree.map((part, i) =>
+                  part === "\u0000" ? <LLink key={i} href="/policies/terms" target="_blank" className="link-underline text-burgundy">{t.checkout.terms}</LLink>
+                  : part === "\u0001" ? <LLink key={i} href="/policies/returns" target="_blank" className="link-underline text-burgundy">{t.checkout.returnPolicy}</LLink>
+                  : <span key={i}>{part}</span>,
+                )}
+              </>
+            }
+            error={err("acceptTerms")}
             {...register("acceptTerms")}
           />
-          {serverError && <p className="border border-error/30 bg-error/5 p-3 text-[13.5px] text-error" role="alert">{serverError}</p>}
+          {serverError && <p className="border-l-2 border-error pl-3 text-[13.5px] text-error" role="alert">{serverError}</p>}
           <Button type="submit" size="lg" full loading={submitting} disabled={cart.hasIssues || methods.length === 0}>
-            {method === "COD" ? `Place order · ${formatBDT(total)}` : `Continue to payment · ${formatBDT(total)}`}
+            {fmt(method === "COD" ? t.checkout.placeOrder : t.checkout.continueToPayment, { total: price(total) })}
           </Button>
-          <p className="flex items-center justify-center gap-2 text-[12px] text-muted"><Lock className="size-3.5" /> Your details are sent securely</p>
+          <p className="flex items-center justify-center gap-2 text-[12px] text-muted"><Lock className="size-3.5" /> {t.checkout.secure}</p>
         </div>
       </aside>
     </form>
@@ -241,5 +241,5 @@ export function CheckoutForm({
 }
 
 function Step({ n }: { n: number }) {
-  return <span className="flex size-7 items-center justify-center rounded-full border border-burgundy font-sans text-[12px] text-burgundy">{n}</span>;
+  return <span className="font-serif text-[15px] italic text-rose">{String(n).padStart(2, "0")}</span>;
 }

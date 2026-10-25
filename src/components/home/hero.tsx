@@ -1,48 +1,46 @@
 import { getImageProps } from "next/image";
 import { ButtonLink } from "@/components/ui/button";
 import { getBanners } from "@/modules/content/queries";
+import { getT } from "@/i18n/server";
+import { localePath } from "@/i18n/config";
 
+/** Splits "More Than a Fragrance. A Feeling." → ["More Than a Fragrance.", "A Feeling."] (also "।"). */
+function splitHeadline(title: string): [string, string | null] {
+  const m = title.match(/^(.+?[.।])\s+(.+)$/);
+  return m ? [m[1], m[2]] : [title, null];
+}
+
+/** Full-bleed editorial campaign: one image, minimal copy, one call to action. */
 export async function Hero() {
-  const [b] = await getBanners("HOME_HERO");
-  const eyebrow = b?.eyebrow ?? "More than a fragrance";
-  const title = b?.title ?? "A Feeling.";
-  const subtitle = b?.subtitle ?? "Discover fragrances that express your personality, elevate your everyday moments, and stay with you.";
+  const { t, locale } = await getT();
+  const [b] = await getBanners("HOME_HERO", locale);
+  const title = b?.title ?? "More Than a Fragrance. A Feeling.";
+  const [first, second] = splitHeadline(title);
   const desktop = b?.imageDesktop;
   const mobile = b?.imageMobile ?? desktop;
+  const lang = b && b.lang !== locale ? b.lang : undefined;
   return (
-    <section className="relative overflow-hidden bg-burgundy text-cream" aria-labelledby="hero-title">
-      <div className="grid lg:min-h-[620px] lg:grid-cols-[1fr_1.15fr]">
-        <div className="relative order-2 flex items-center lg:order-1">
-          <div className="container-x py-12 lg:max-w-none lg:py-20 lg:pl-[max(2rem,calc((100vw-1280px)/2+2rem))] lg:pr-14">
-            <p className="eyebrow flex items-center gap-3 text-gold">
-              <span className="h-px w-8 bg-gold" aria-hidden />
-              {eyebrow}
-            </p>
-            <h1 id="hero-title" className="mt-5 text-[44px] leading-[1.02] text-cream sm:text-[56px] lg:text-[76px]">
-              {title.split(" ").length > 1 ? (
-                <>
-                  {title.split(" ").slice(0, -1).join(" ")} <em className="font-serif italic text-rose">{title.split(" ").slice(-1)}</em>
-                </>
-              ) : (
-                <em className="italic">{title}</em>
-              )}
+    <section className="relative isolate overflow-hidden bg-burgundy text-cream" aria-labelledby="hero-title">
+      <div className="lg:grid lg:min-h-[min(84svh,820px)] lg:grid-cols-12">
+        {/* Image: full-bleed portrait on phones; right-hand panel on desktop so the photograph is never upscaled */}
+        <div className="relative aspect-[4/5] max-h-[74svh] w-full sm:aspect-[16/10] lg:order-2 lg:col-span-6 lg:aspect-auto lg:max-h-none xl:col-span-7">
+          {desktop && <HeroPicture desktop={desktop} mobile={mobile!} alt={b?.imageAlt ?? ""} />}
+          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(74,16,34,1)_0%,rgba(74,16,34,0.55)_30%,rgba(74,16,34,0)_60%)] lg:bg-[linear-gradient(to_right,rgba(74,16,34,1)_0%,rgba(74,16,34,0)_35%)]" aria-hidden />
+        </div>
+        <div className="relative z-10 -mt-40 flex items-end sm:-mt-28 lg:order-1 lg:col-span-6 lg:mt-0 lg:items-center xl:col-span-5">
+          <div className="w-full px-[var(--gutter)] pb-12 md:pb-16 lg:py-20 lg:pr-0" lang={lang}>
+            {b?.eyebrow && <p className="eyebrow text-gold">{b.eyebrow}</p>}
+            <h1 id="hero-title" className="t-display mt-4 text-cream md:mt-6 lg:-mr-24">
+              <span className="block">{first}</span>
+              {second && <em className="block font-serif italic text-rose">{second}</em>}
             </h1>
-            <p className="mt-6 max-w-md text-[15.5px] leading-relaxed text-cream/80 md:text-[17px]">{subtitle}</p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              {b?.ctaHref && <ButtonLink href={b.ctaHref} variant="light" size="lg">{b.ctaLabel ?? "Shop now"}</ButtonLink>}
-              {b?.cta2Href && <ButtonLink href={b.cta2Href} variant="outline-light" size="lg">{b.cta2Label ?? "Discover"}</ButtonLink>}
-              {!b && (
-                <>
-                  <ButtonLink href="/perfumes" variant="light" size="lg">Explore Perfumes</ButtonLink>
-                  <ButtonLink href="/attar" variant="outline-light" size="lg">Discover Attars</ButtonLink>
-                </>
-              )}
+            {b?.subtitle && <p className="t-lead mt-5 max-w-md text-cream/80 md:mt-7">{b.subtitle}</p>}
+            <div className="mt-8 md:mt-10">
+              <ButtonLink href={localePath(locale, b?.ctaHref ?? "/shop")} variant="light" size="lg">
+                {b?.ctaLabel ?? t.home.heroCta}
+              </ButtonLink>
             </div>
           </div>
-        </div>
-        <div className="relative order-1 aspect-[4/5] sm:aspect-[16/10] lg:order-2 lg:aspect-auto">
-          {desktop && <HeroPicture desktop={desktop} mobile={mobile!} alt={b?.imageAlt ?? ""} />}
-          <div className="absolute inset-0 bg-gradient-to-t from-burgundy/70 via-transparent to-transparent lg:bg-gradient-to-r lg:from-burgundy lg:via-burgundy/10 lg:to-transparent" aria-hidden />
         </div>
       </div>
     </section>
@@ -58,7 +56,7 @@ function HeroPicture({ desktop, mobile, alt }: { desktop: string; mobile: string
     <picture>
       <source media="(min-width: 640px)" srcSet={desktopSet} sizes="(min-width: 1024px) 55vw, 100vw" />
       {/* eslint-disable-next-line jsx-a11y/alt-text -- alt is in rest */}
-      <img {...rest} srcSet={mobileSet} className="absolute inset-0 h-full w-full object-cover" />
+      <img {...rest} srcSet={mobileSet} className="absolute inset-0 h-full w-full object-cover object-[62%_center]" />
     </picture>
   );
 }

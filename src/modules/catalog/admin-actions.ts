@@ -20,6 +20,7 @@ const variantRow = z.object({
   price: z.coerce.number().positive("Price must be more than 0").max(1_000_000),
   compareAtPrice: z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : v), z.coerce.number().positive().max(1_000_000).optional()),
   status: z.enum(["ACTIVE", "ARCHIVED"]).default("ACTIVE"),
+  format: z.enum(["SPRAY", "ROLL_ON", "OIL"]).default("SPRAY"),
   openingStock: z.preprocess((v) => (v === "" || v === undefined ? 0 : v), z.coerce.number().int().min(0).max(100000)),
   lowStockThreshold: z.preprocess((v) => (v === "" || v === undefined ? 5 : v), z.coerce.number().int().min(0).max(10000)),
 });
@@ -34,6 +35,7 @@ const productSchema = z
     description: z.string().trim().max(20000).min(10, "Add a description"),
     productType: zText(60).min(2, "Product type is required (e.g. Perfume · Spray)"),
     intensity: z.enum(["LIGHT", "MODERATE", "STRONG"]),
+    gender: z.enum(["MASCULINE", "FEMININE", "UNISEX"]).default("UNISEX"),
     applicationMethod: zOptText(60),
     usageInstructions: zOptText(1000),
     safetyNote: zOptText(1000),
@@ -96,6 +98,7 @@ export async function saveProductAction(fd: FormData): Promise<ActionResult<{ id
       description,
       productType: input.productType,
       intensity: input.intensity,
+      gender: input.gender,
       seasons,
       applicationMethod: input.applicationMethod ?? null,
       usageInstructions: input.usageInstructions ?? null,
@@ -162,6 +165,7 @@ export async function saveProductAction(fd: FormData): Promise<ActionResult<{ id
         const row = {
           sizeMl: v.sizeMl,
           label: v.label?.trim() || `${v.sizeMl} ml`,
+          format: v.format,
           sku: v.sku.toUpperCase(),
           price: Math.round(v.price * 100),
           compareAtPrice: v.compareAtPrice !== undefined ? Math.round(v.compareAtPrice * 100) : null,
@@ -404,19 +408,19 @@ const taxonomyKinds = z.enum(["family", "occasion", "note"]);
 export async function saveTaxonomyAction(fd: FormData): Promise<ActionResult> {
   try {
     const user = await requirePermission("catalog:manage");
-    const input = z.object({ kind: taxonomyKinds, id: z.string().optional(), name: zText(60).min(2), description: zOptText(300), sortOrder: zOptInt(0, 999) }).parse(formObject(fd));
+    const input = z.object({ kind: taxonomyKinds, id: z.string().optional(), name: zText(60).min(2), nameBn: zOptText(60), description: zOptText(300), descriptionBn: zOptText(300), sortOrder: zOptInt(0, 999) }).parse(formObject(fd));
     const slug = slugify(input.name);
     if (input.kind === "family") {
-      const data = { name: input.name, description: input.description ?? null, sortOrder: input.sortOrder ?? 0, ...(input.id ? {} : { slug }) };
+      const data = { name: input.name, nameBn: input.nameBn ?? null, description: input.description ?? null, descriptionBn: input.descriptionBn ?? null, sortOrder: input.sortOrder ?? 0, ...(input.id ? {} : { slug }) };
       if (input.id) await db.fragranceFamily.update({ where: { id: input.id }, data });
       else await db.fragranceFamily.create({ data: { ...data, slug } });
     } else if (input.kind === "occasion") {
-      const data = { name: input.name, sortOrder: input.sortOrder ?? 0 };
+      const data = { name: input.name, nameBn: input.nameBn ?? null, sortOrder: input.sortOrder ?? 0 };
       if (input.id) await db.occasion.update({ where: { id: input.id }, data });
       else await db.occasion.create({ data: { ...data, slug } });
     } else {
-      if (input.id) await db.fragranceNote.update({ where: { id: input.id }, data: { name: input.name } });
-      else await db.fragranceNote.create({ data: { name: input.name, slug } });
+      if (input.id) await db.fragranceNote.update({ where: { id: input.id }, data: { name: input.name, nameBn: input.nameBn ?? null } });
+      else await db.fragranceNote.create({ data: { name: input.name, nameBn: input.nameBn ?? null, slug } });
     }
     await audit({ actorId: user.id, action: `${input.kind}.${input.id ? "update" : "create"}`, entityType: input.kind, entityId: input.id, after: input });
     revalidateStore();

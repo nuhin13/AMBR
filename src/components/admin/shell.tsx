@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import {
   BarChart3, Boxes, CreditCard, FileText, FolderTree, HelpCircle, History, Home, Image as ImageIcon, Layers, LayoutDashboard, LogOut,
-  Mail, Megaphone, Menu, Package, Send, Settings, ShieldCheck, ShoppingBag, Star, Tags, TicketPercent, Truck, Users, ExternalLink,
+  Mail, Megaphone, Menu, Package, Send, Settings, ShieldCheck, ShoppingBag, Star, Tags, TicketPercent, Truck, Users, ExternalLink, BookOpen, Languages,
 } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import type { AdminNavGroup } from "./nav";
 
 const ICONS = {
   BarChart3, Boxes, CreditCard, FileText, FolderTree, HelpCircle, History, Home, Image: ImageIcon, Layers, LayoutDashboard,
-  Mail, Megaphone, Package, Send, Settings, ShieldCheck, ShoppingBag, Star, Tags, TicketPercent, Truck, Users,
+  Mail, Megaphone, Package, Send, Settings, ShieldCheck, ShoppingBag, Star, Tags, TicketPercent, Truck, Users, BookOpen, Languages,
 } as const;
 
 function NavList({ groups, onNavigate }: { groups: AdminNavGroup[]; onNavigate?: () => void }) {
@@ -57,7 +57,7 @@ export function AdminShell({ groups, user, logout, children }: { groups: AdminNa
     <div className="space-y-1 border-t border-cream/10 pt-4 text-[13px]">
       <p className="px-3 text-cream">{user.name}</p>
       <p className="px-3 text-[11px] uppercase tracking-[0.14em] text-cream/50">{user.role.replace("_", " ")}</p>
-      <Link href="/" className="flex items-center gap-3 rounded-[2px] px-3 py-2 text-cream/70 hover:text-cream" target="_blank">
+      <Link href="/en" className="flex items-center gap-3 rounded-[2px] px-3 py-2 text-cream/70 hover:text-cream" target="_blank">
         <ExternalLink className="size-4" aria-hidden /> View store
       </Link>
       <form action={logout}>

@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { randomToken } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { normalizeBDPhone } from "@/lib/phone";
-import { UserFacingError } from "@/lib/action-result";
+import { LocalizedError } from "@/lib/i18n-errors";
+import type { Locale } from "@/i18n/config";
 import { reserveStock } from "@/modules/inventory/service";
 import { computeTotals, type CouponEvaluation } from "@/modules/pricing";
 import { redeemCouponInTx } from "@/modules/promotions/coupons";
@@ -32,31 +33,31 @@ export type PlacedOrder = { orderId: string; orderNumber: string; token: string;
  * with guarded updates, redeems the coupon, snapshots items and the address, and clears the cart.
  * Any failure rolls everything back.
  */
-export async function placeOrder(input: CheckoutInput, userId: string | null): Promise<PlacedOrder> {
+export async function placeOrder(input: CheckoutInput, userId: string | null, locale: Locale = "en"): Promise<PlacedOrder> {
   const phone = normalizeBDPhone(input.phone)!;
 
   // Idempotency: a double-submitted form returns the original order.
   const existing = await db.order.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
   if (existing) return { orderId: existing.id, orderNumber: existing.orderNumber, token: existing.guestAccessToken, paymentMethod: existing.paymentMethod, total: existing.total };
 
-  if (!(await availableMethods()).includes(input.paymentMethod)) throw new UserFacingError("That payment method isn't available right now. Please choose another.");
+  if (!(await availableMethods()).includes(input.paymentMethod)) throw new LocalizedError("errors.methodUnavailable");
 
   // Free stock held by abandoned online-payment orders before we check availability.
   await releaseExpiredReservations(20).catch((e) => logger.warn("checkout.release_expired_failed", { error: e }));
 
   const cart = await getCheckoutCart();
-  if (!cart || cart.items.length === 0) throw new UserFacingError("Your bag is empty.");
+  if (!cart || cart.items.length === 0) throw new LocalizedError("errors.bagEmpty");
 
   const district = await db.district.findUnique({ where: { id: input.districtId } });
   const upazila = await db.upazila.findFirst({ where: { id: input.upazilaId, districtId: input.districtId } });
-  if (!district || !upazila) throw new UserFacingError("Please choose a valid district and area.");
+  if (!district || !upazila) throw new LocalizedError("errors.invalidArea");
   const zone = await resolveZone(district.id, upazila.id);
-  if (!zone) throw new UserFacingError("Sorry, we don't deliver to this area yet. Please contact us on WhatsApp.");
+  if (!zone) throw new LocalizedError("errors.noDelivery");
 
   for (const it of cart.items) {
     const p = it.variant.product;
     if (p.status !== "PUBLISHED" || p.category.status !== "ACTIVE" || it.variant.status !== "ACTIVE") {
-      throw new UserFacingError(`${p.name} (${it.variant.label}) is no longer available. Please remove it from your bag.`);
+      throw new LocalizedError("errors.productGone", { name: `${p.name} (${it.variant.label})` });
     }
   }
 
@@ -83,7 +84,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null): P
           let couponId: string | null = null;
           if (cart.couponCode) {
             const r = await redeemCouponInTx(tx, cart.couponCode, subtotal, phone, userId);
-            if (!r.result.ok) throw new UserFacingError(`Coupon ${cart.couponCode}: ${r.result.reason} Remove it from your bag to continue.`);
+            if (!r.result.ok) throw new LocalizedError("errors.couponInvalid", { code: cart.couponCode, reason: r.result.reason });
             coupon = r.result;
             couponId = r.coupon!.id;
           }
@@ -113,6 +114,7 @@ export async function placeOrder(input: CheckoutInput, userId: string | null): P
               couponCode: coupon ? cart.couponCode : null,
               reservationExpiresAt: online ? new Date(Date.now() + RESERVATION_MINUTES * 60_000) : null,
               isDemo: lines.some((l) => l.isDemo),
+              locale,
               items: {
                 create: lines.map((l) => ({
                   variantId: l.variantId,
@@ -163,5 +165,5 @@ export async function placeOrder(input: CheckoutInput, userId: string | null): P
       throw e;
     }
   }
-  throw new UserFacingError("We couldn't create your order. Please try again.");
+  throw new LocalizedError("errors.orderFailed");
 }

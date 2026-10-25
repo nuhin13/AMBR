@@ -36,9 +36,9 @@
 - A wrong password shows an error.
 - Non-staff users can't open `/admin`.
 
-## Latest results (2026-10-25)
-- `npm test`: **49 passed**.
-- `npx playwright test`: **16 passed** (8 specs × 2 devices).
+## Latest results (2026-10-25, after the redesign and bilingual work)
+- `npm test`: **65 passed** (adds i18n parity/formatting tests and bilingual integration tests).
+- `npx playwright test`: **36 passed** (18 scenarios × Pixel 7 + desktop, including `tests/e2e/bangla.spec.ts`). The E2E global setup resets rate-limit counters, because the suite places real demo orders.
 
 ## Manual QA checklist before launch
 - [ ] Real phone (Android Chrome and iPhone Safari): browse → filter → product → add → checkout (COD)

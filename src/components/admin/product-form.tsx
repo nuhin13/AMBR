@@ -16,6 +16,7 @@ export type VariantRow = {
   price: string;
   compareAtPrice: string;
   status: "ACTIVE" | "ARCHIVED";
+  format: "SPRAY" | "ROLL_ON" | "OIL";
   openingStock: string;
   lowStockThreshold: string;
   hasOrders?: boolean;
@@ -32,6 +33,7 @@ export type ProductFormValues = {
   description: string;
   productType: string;
   intensity: "LIGHT" | "MODERATE" | "STRONG";
+  gender: "MASCULINE" | "FEMININE" | "UNISEX";
   seasons: string[];
   applicationMethod: string;
   usageInstructions: string;
@@ -60,7 +62,7 @@ type Opt = { id: string; name: string };
 
 const SEASONS = [["SUMMER", "Summer"], ["MONSOON", "Monsoon"], ["WINTER", "Winter"], ["ALL_YEAR", "All year"]];
 
-const emptyVariant = (n: number, base: string): VariantRow => ({ sizeMl: n ? String(n) : "", label: "", sku: base ? `${base}-${n || ""}ML` : "", price: "", compareAtPrice: "", status: "ACTIVE", openingStock: "0", lowStockThreshold: "5" });
+const emptyVariant = (n: number, base: string, format: VariantRow["format"] = "SPRAY"): VariantRow => ({ sizeMl: n ? String(n) : "", label: "", sku: base ? `${base}-${n || ""}ML` : "", price: "", compareAtPrice: "", status: "ACTIVE", format, openingStock: "0", lowStockThreshold: "5" });
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -79,7 +81,7 @@ export function ProductForm({ initial, categories, families, occasions }: { init
   const [slug, setSlug] = useState(initial.slug);
   const [slugTouched, setSlugTouched] = useState(Boolean(initial.id));
   const [categoryId, setCategoryId] = useState(initial.categoryId);
-  const [variants, setVariants] = useState<VariantRow[]>(initial.variants.length ? initial.variants : [emptyVariant(0, "")]);
+  const [variants, setVariants] = useState<VariantRow[]>(initial.variants.length ? initial.variants : [emptyVariant(0, "", categories.find((c) => c.id === initial.categoryId)?.type === "ATTAR" ? "ROLL_ON" : "SPRAY")]);
   const [fams, setFams] = useState<string[]>(initial.families);
   const [primary, setPrimary] = useState(initial.primaryFamily);
   const isAttar = categories.find((c) => c.id === categoryId)?.type === "ATTAR";
@@ -90,13 +92,13 @@ export function ProductForm({ initial, categories, families, occasions }: { init
     const presets = isAttar ? [3, 5, 10] : [10, 30];
     const existing = new Set(variants.map((v) => Number(v.sizeMl)));
     const nextSize = presets.find((p) => !existing.has(p)) ?? 0;
-    setVariants((v) => [...v.filter((r) => r.sizeMl || r.sku || r.price || r.id), emptyVariant(nextSize, skuBase)]);
+    setVariants((v) => [...v.filter((r) => r.sizeMl || r.sku || r.price || r.id), emptyVariant(nextSize, skuBase, isAttar ? "ROLL_ON" : "SPRAY")]);
   };
 
   return (
     <ActionForm action={saveProductAction} success="Product saved" redirectTo={initial.id ? undefined : (d) => `/admin/products/${(d as { id: string }).id}`} className="grid gap-6 xl:grid-cols-[1fr_360px]">
       {initial.id && <input type="hidden" name="id" value={initial.id} />}
-      <input type="hidden" name="variantsJson" value={JSON.stringify(variants.map((v) => ({ id: v.id, sizeMl: v.sizeMl, label: v.label, sku: v.sku, price: v.price, compareAtPrice: v.compareAtPrice, status: v.status, openingStock: v.openingStock, lowStockThreshold: v.lowStockThreshold })))} />
+      <input type="hidden" name="variantsJson" value={JSON.stringify(variants.map((v) => ({ id: v.id, sizeMl: v.sizeMl, label: v.label, sku: v.sku, price: v.price, compareAtPrice: v.compareAtPrice, status: v.status, format: v.format, openingStock: v.openingStock, lowStockThreshold: v.lowStockThreshold })))} />
       <div className="space-y-6">
         <Section title="Basics">
           <Input
@@ -126,6 +128,11 @@ export function ProductForm({ initial, categories, families, occasions }: { init
                 <Input label="Price ৳" inputMode="decimal" value={v.price} onChange={(e) => update(i, { price: e.target.value })} required />
                 <Input label="Compare-at ৳" inputMode="decimal" value={v.compareAtPrice} onChange={(e) => update(i, { compareAtPrice: e.target.value })} />
                 <div className="col-span-2 flex flex-wrap items-end gap-3 md:col-span-1 md:flex-nowrap">
+                  <Select label="Format" value={v.format} onChange={(e) => update(i, { format: e.target.value as VariantRow["format"] })}>
+                    <option value="SPRAY">Spray</option>
+                    <option value="ROLL_ON">Roll-on</option>
+                    <option value="OIL">Oil</option>
+                  </Select>
                   <Select label="Status" value={v.status} onChange={(e) => update(i, { status: e.target.value as VariantRow["status"] })}>
                     <option value="ACTIVE">Active</option>
                     <option value="ARCHIVED">Archived</option>
@@ -197,11 +204,18 @@ export function ProductForm({ initial, categories, families, occasions }: { init
               ))}
             </div>
           </div>
-          <Select name="intensity" label="Intensity" defaultValue={initial.intensity}>
-            <option value="LIGHT">Light</option>
-            <option value="MODERATE">Moderate</option>
-            <option value="STRONG">Strong</option>
-          </Select>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Select name="intensity" label="Intensity (shown as presence: soft / moderate / bold)" defaultValue={initial.intensity}>
+              <option value="LIGHT">Light</option>
+              <option value="MODERATE">Moderate</option>
+              <option value="STRONG">Strong</option>
+            </Select>
+            <Select name="gender" label="For" defaultValue={initial.gender} hint="Drives the For Him / For Her / Unisex pages. Unisex scents appear in all three.">
+              <option value="UNISEX">Unisex</option>
+              <option value="MASCULINE">For him</option>
+              <option value="FEMININE">For her</option>
+            </Select>
+          </div>
         </Section>
 
         <Section title="Use & safety">

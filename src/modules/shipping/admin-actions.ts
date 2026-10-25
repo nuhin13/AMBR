@@ -6,7 +6,7 @@ import { slugify } from "@/lib/utils";
 import { toActionError, UserFacingError, type ActionResult } from "@/lib/action-result";
 import { requirePermission } from "@/modules/auth/rbac";
 import { audit } from "@/modules/audit/log";
-import { formObject, zBool, zInt, zOptTaka, zTaka, zText } from "@/modules/reports/form-data";
+import { formObject, revalidateStore, zBool, zInt, zOptTaka, zOptText, zTaka, zText } from "@/modules/reports/form-data";
 
 const zoneSchema = z.object({
   id: z.string().optional(),
@@ -14,6 +14,8 @@ const zoneSchema = z.object({
   fee: zTaka,
   freeShippingThreshold: zOptTaka,
   estimatedDays: zText(40).min(2),
+  nameBn: zOptText(60),
+  estimatedDaysBn: zOptText(40),
   isActive: zBool,
   sortOrder: zInt(0, 999),
 });
@@ -22,7 +24,7 @@ export async function saveZoneAction(fd: FormData): Promise<ActionResult> {
   try {
     const user = await requirePermission("shipping:manage");
     const input = zoneSchema.parse(formObject(fd));
-    const data = { name: input.name, fee: input.fee, freeShippingThreshold: input.freeShippingThreshold ?? null, estimatedDays: input.estimatedDays, isActive: input.isActive, sortOrder: input.sortOrder };
+    const data = { name: input.name, fee: input.fee, freeShippingThreshold: input.freeShippingThreshold ?? null, estimatedDays: input.estimatedDays, nameBn: input.nameBn ?? null, estimatedDaysBn: input.estimatedDaysBn ?? null, isActive: input.isActive, sortOrder: input.sortOrder };
     const before = input.id ? await db.shippingZone.findUnique({ where: { id: input.id } }) : null;
     if (input.id && !input.isActive) {
       const used = await db.district.count({ where: { shippingZoneId: input.id } });
@@ -32,6 +34,7 @@ export async function saveZoneAction(fd: FormData): Promise<ActionResult> {
     if (!input.id && (await db.shippingZone.findUnique({ where: { slug } }))) slug = `${slug}-${Date.now().toString(36)}`;
     const z1 = input.id ? await db.shippingZone.update({ where: { id: input.id }, data }) : await db.shippingZone.create({ data: { ...data, slug } });
     await audit({ actorId: user.id, action: input.id ? "shipping.zone.update" : "shipping.zone.create", entityType: "ShippingZone", entityId: z1.id, before, after: data });
+    revalidateStore();
     return { ok: true, message: `${z1.name} saved.` };
   } catch (e) {
     return toActionError(e);

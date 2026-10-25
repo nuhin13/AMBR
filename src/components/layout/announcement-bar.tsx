@@ -1,17 +1,19 @@
-import Link from "next/link";
 import { getBanners } from "@/modules/content/queries";
+import { getT } from "@/i18n/server";
+import { LLink } from "@/components/i18n/llink";
 
 export async function AnnouncementBar() {
-  const [banner] = await getBanners("ANNOUNCEMENT");
+  const { locale } = await getT();
+  const [banner] = await getBanners("ANNOUNCEMENT", locale);
   if (!banner) return null;
   return (
-    <div className="bg-beige text-burgundy">
-      <p className="container-x flex min-h-9 items-center justify-center gap-2 py-2 text-center text-[11.5px] font-medium tracking-[0.12em] uppercase">
+    <div className="bg-burgundy-deep text-cream/85" lang={banner.lang === locale ? undefined : banner.lang}>
+      <p className="container-wide flex min-h-8 items-center justify-center gap-3 py-1.5 text-center text-[11px] tracking-[0.14em] uppercase [&:lang(bn)]:normal-case [&:lang(bn)]:tracking-normal [&:lang(bn)]:text-[12.5px]">
         <span>{banner.title}</span>
         {banner.ctaHref && banner.ctaLabel && (
-          <Link href={banner.ctaHref} className="underline decoration-burgundy/40 underline-offset-4 hover:decoration-burgundy">
+          <LLink href={banner.ctaHref} className="link-quiet text-cream">
             {banner.ctaLabel}
-          </Link>
+          </LLink>
         )}
       </p>
     </div>

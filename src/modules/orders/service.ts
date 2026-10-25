@@ -8,7 +8,8 @@ import { fulfilStock, releaseStock, returnStock } from "@/modules/inventory/serv
 import { releaseCouponInTx } from "@/modules/promotions/coupons";
 import { sendEmail } from "@/modules/notifications/email";
 import { orderStatusEmail } from "@/modules/notifications/templates";
-import { STATUS_LABEL, transitionBlocker } from "./status";
+import { transitionBlocker } from "./status";
+import { localePath, type Locale } from "@/i18n/config";
 
 export type StatusChangeOptions = {
   note?: string;
@@ -64,13 +65,14 @@ export async function changeOrderStatus(orderId: string, to: OrderStatus, opts: 
   });
 
   if (opts.notifyCustomer !== false && updated.email && ["CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"].includes(to)) {
-    const mail = orderStatusEmail(updated.orderNumber, STATUS_LABEL[to], trackingUrl(updated.orderNumber, updated.guestAccessToken), opts.note);
+    const locale: Locale = updated.locale === "bn" ? "bn" : "en";
+    const mail = orderStatusEmail(updated.orderNumber, to, trackingUrl(updated.orderNumber, updated.guestAccessToken, locale), locale, opts.note);
     sendEmail({ to: updated.email, ...mail }).catch((e) => logger.error("order.status_email_failed", { error: e }));
   }
   return updated;
 }
 
-export const trackingUrl = (orderNumber: string, token: string) => `${siteUrl}/order/${orderNumber}?t=${token}`;
+export const trackingUrl = (orderNumber: string, token: string, locale: Locale = "en") => `${siteUrl}${localePath(locale, `/order/${orderNumber}?t=${token}`)}`;
 
 /**
  * Cancels online-payment orders whose reservation window passed without payment,

@@ -26,6 +26,7 @@ export async function listProductsAdmin(f: ProductAdminFilters, pageSize = 30) {
       images: { orderBy: { sortOrder: "asc" }, take: 1 },
       variants: { orderBy: { sizeMl: "asc" }, include: { inventory: true } },
       families: { where: { isPrimary: true }, include: { family: true } },
+      translations: { where: { locale: "bn" }, select: { status: true } },
     },
   });
   const products = rows.map((p) => {
@@ -71,12 +72,12 @@ export async function productFormOptions() {
 export async function listCategoriesAdmin() {
   return db.category.findMany({
     orderBy: { sortOrder: "asc" },
-    include: { _count: { select: { products: true } } },
+    include: { _count: { select: { products: true } }, translations: { where: { locale: "bn" } } },
   });
 }
 
 export async function listCollectionsAdmin() {
-  return db.collection.findMany({ orderBy: [{ sortOrder: "asc" }], include: { _count: { select: { products: true } } } });
+  return db.collection.findMany({ orderBy: [{ sortOrder: "asc" }], include: { _count: { select: { products: true } }, translations: { where: { locale: "bn" }, select: { status: true } } } });
 }
 
 export async function getCollectionForEdit(id: string) {

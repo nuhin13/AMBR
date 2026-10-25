@@ -4,15 +4,18 @@ import { EditSheet } from "./edit-sheet";
 import { ActionForm, SubmitButton } from "./action-form";
 import { Input, Select, Textarea, Checkbox } from "@/components/ui/field";
 import { saveCategoryAction } from "@/modules/catalog/admin-actions";
+import { LangTabs, TranslationEditor } from "./translation-editor";
+import type { TrStatus } from "./translation-fields";
 
 type Cat = { id?: string; name: string; slug: string; type: string; tagline: string | null; description: string | null; imageUrl: string | null; imageAlt: string | null; status: string; sortOrder: number };
 const TYPES = ["PERFUME", "ATTAR", "BODY_MIST", "CAR", "HOME", "PET", "MINI", "GIFT", "OTHER"];
 
-export function CategoryEditor({ category, isNew }: { category: Cat; isNew?: boolean }) {
+export function CategoryEditor({ category, isNew, translation, defaultOpen }: { category: Cat; isNew?: boolean; translation?: { status: TrStatus; values: Record<string, string> }; defaultOpen?: boolean }) {
   const fixed = ["perfumes", "attar"].includes(category.slug);
   return (
-    <EditSheet title={isNew ? "New category" : `Edit ${category.name}`} trigger={isNew ? "New category" : "Edit"} variant={isNew ? "primary" : "ghost"}>
-      {(close) => (
+    <EditSheet title={isNew ? "New category" : `Edit ${category.name}`} trigger={isNew ? "New category" : "Edit"} variant={isNew ? "primary" : "ghost"} defaultOpen={defaultOpen}>
+      {(close) => {
+        const english = (
         <ActionForm action={saveCategoryAction} className="space-y-4" onSuccess={close}>
           {category.id && <input type="hidden" name="id" value={category.id} />}
           <Input name="name" label="Name" defaultValue={category.name} required />
@@ -36,7 +39,17 @@ export function CategoryEditor({ category, isNew }: { category: Cat; isNew?: boo
           <Input name="sortOrder" type="number" label="Sort order" defaultValue={category.sortOrder} />
           <SubmitButton full>Save category</SubmitButton>
         </ActionForm>
-      )}
+        );
+        return category.id && translation ? (
+          <LangTabs
+            bnStatus={translation.status}
+            english={english}
+            bangla={<TranslationEditor entity="category" parentId={category.id} status={translation.status} values={translation.values} english={{ name: category.name, tagline: category.tagline, description: category.description }} />}
+          />
+        ) : (
+          english
+        );
+      }}
     </EditSheet>
   );
 }

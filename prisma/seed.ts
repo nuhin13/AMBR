@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { PrismaClient, type CategoryType, type Intensity, type NoteTier, type Season } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
+import { seedBilingual } from "./seed-bilingual";
 
 const db = new PrismaClient();
 const tk = (taka: number) => taka * 100;
@@ -197,8 +198,6 @@ async function seedContent() {
   if ((await db.faqItem.count()) === 0) {
     await db.faqItem.createMany({ data: FAQS.map(([category, question, answer], i) => ({ category, question, answer, sortOrder: i })) });
   }
-  const sections = ["categories", "bestSellers", "discover", "whyAmbr", "collections", "story", "reviews", "newsletter"];
-  for (const [i, key] of sections.entries()) await db.homepageSection.upsert({ where: { key }, create: { key, sortOrder: i }, update: {} });
 
   if ((await db.banner.count({ where: { placement: "HOME_HERO" } })) === 0) {
     await db.banner.create({
@@ -477,6 +476,8 @@ async function main() {
   console.log("  ✓ Pages, FAQ, homepage sections, banners");
   await seedOwner();
   if (process.env.SEED_DEMO === "true") await seedDemo();
+  await seedBilingual(db, process.env.SEED_DEMO === "true");
+  console.log("  ✓ Bangla starter content, editorial banners, journal" + (process.env.SEED_DEMO === "true" ? ", demo discovery sets" : ""));
   console.log("Done.");
 }
 

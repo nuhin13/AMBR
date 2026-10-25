@@ -11,3 +11,6 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "127.0.0.1", "user-agent": "vitest" }),
   cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }),
 }));
+
+// Root params only exist inside the Next.js compiler; tests run as the English storefront.
+vi.mock("next/root-params", () => ({ locale: async () => "en" }));

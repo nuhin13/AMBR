@@ -9,6 +9,11 @@ The admin dashboard shows a live version of this list.
 - [ ] Review the About page, the four policy pages, the FAQ and the fragrance guide (Admin → Content). The drafts include **return windows (48 hours / 7 days) that you must confirm**
 - [ ] Decide how "inspired" products are named (see missing-information Q3) and the product-type wording (Q4)
 
+## Bangla
+- [ ] Proofread the starter Bangla content (pages, FAQ, banners, product copy). It is published so the site works in both languages; use Admin → Content → Translations
+- [ ] Add Bangla names for any new delivery zones, families, occasions and notes
+- [ ] For each real product, publish its বাংলা tab (or leave it on Draft and the site shows English)
+
 ## Business settings (Admin → Settings / Shipping / Payments)
 - [ ] Store contact: phone, WhatsApp, email, address, hours, legal name, trade licence
 - [ ] Facebook and Instagram links

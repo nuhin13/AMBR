@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { randomToken } from "@/lib/crypto";
-import { UserFacingError } from "@/lib/action-result";
+import { LocalizedError } from "@/lib/i18n-errors";
 import { getCurrentUser } from "@/modules/auth/session";
 import { sellable } from "@/modules/inventory/service";
 import { computeTotals, evaluateCoupon, type CouponEvaluation } from "@/modules/pricing";
@@ -25,7 +25,8 @@ export type CartLine = {
   available: number;
   /** Purchasable right now (product published, variant active, enough stock). */
   ok: boolean;
-  issue: string | null;
+  /** Why the line can't be bought right now (translated on the client). */
+  issue: { code: "unavailable" | "soldOut" | "onlyLeft"; count?: number } | null;
   otherVariants: { id: string; label: string; price: number; available: number }[];
 };
 
@@ -104,10 +105,10 @@ export async function buildCartView(cartId: string, maxQtyPerItem: number): Prom
     const v = item.variant;
     const p = v.product;
     const available = sellable(v.inventory);
-    let issue: string | null = null;
-    if (p.status !== "PUBLISHED" || p.category.status !== "ACTIVE" || v.status !== "ACTIVE") issue = "No longer available";
-    else if (available === 0) issue = "Sold out";
-    else if (item.quantity > available) issue = `Only ${available} left`;
+    let issue: CartLine["issue"] = null;
+    if (p.status !== "PUBLISHED" || p.category.status !== "ACTIVE" || v.status !== "ACTIVE") issue = { code: "unavailable" };
+    else if (available === 0) issue = { code: "soldOut" };
+    else if (item.quantity > available) issue = { code: "onlyLeft", count: available };
     return {
       id: item.id,
       variantId: v.id,
@@ -131,7 +132,7 @@ export async function buildCartView(cartId: string, maxQtyPerItem: number): Prom
   if (cart.couponCode) {
     const c = await db.coupon.findUnique({ where: { code: cart.couponCode } });
     const sub = purchasable.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
-    coupon = c ? evaluateCoupon(c, sub) : { ok: false, reason: "This code is no longer available." };
+    coupon = c ? evaluateCoupon(c, sub) : { ok: false, reason: "This code is no longer available.", reasonKey: "errors.codeInactive" };
   }
   const totals = computeTotals(purchasable, { coupon });
   return {
@@ -158,7 +159,7 @@ async function assertPurchasable(variantId: string) {
     include: { inventory: true, product: { include: { category: { select: { status: true } } } } },
   });
   if (!v || v.status !== "ACTIVE" || v.product.status !== "PUBLISHED" || v.product.category.status !== "ACTIVE") {
-    throw new UserFacingError("This item isn't available.");
+    throw new LocalizedError("errors.itemUnavailable");
   }
   return { available: sellable(v.inventory), name: `${v.product.name} (${v.label})` };
 }
@@ -166,12 +167,12 @@ async function assertPurchasable(variantId: string) {
 export async function addItem(variantId: string, quantity: number) {
   const { checkout } = await getSettings();
   const { available, name } = await assertPurchasable(variantId);
-  if (available <= 0) throw new UserFacingError(`${name} is sold out.`);
+  if (available <= 0) throw new LocalizedError("errors.soldOutName", { name });
   const cartId = await ensureCart();
   const existing = await db.cartItem.findUnique({ where: { cartId_variantId: { cartId, variantId } } });
   const next = Math.min((existing?.quantity ?? 0) + quantity, available, checkout.maxQtyPerItem);
   if (existing && next === existing.quantity) {
-    throw new UserFacingError(existing.quantity >= available ? `You already have all available stock of ${name} in your bag.` : `Maximum ${checkout.maxQtyPerItem} per item.`);
+    throw existing.quantity >= available ? new LocalizedError("errors.haveAllStock", { name }) : new LocalizedError("errors.maxPerItem", { max: checkout.maxQtyPerItem });
   }
   await db.cartItem.upsert({
     where: { cartId_variantId: { cartId, variantId } },
@@ -185,7 +186,7 @@ export async function addItem(variantId: string, quantity: number) {
 async function ownedItem(itemId: string) {
   const cartId = await findCartId();
   const item = cartId ? await db.cartItem.findFirst({ where: { id: itemId, cartId } }) : null;
-  if (!item || !cartId) throw new UserFacingError("That item is no longer in your bag.");
+  if (!item || !cartId) throw new LocalizedError("errors.itemGone");
   return { item, cartId };
 }
 
@@ -215,9 +216,9 @@ export async function changeVariant(itemId: string, newVariantId: string) {
     db.productVariant.findUnique({ where: { id: item.variantId }, select: { productId: true } }),
     db.productVariant.findUnique({ where: { id: newVariantId }, select: { productId: true } }),
   ]);
-  if (!current || !next || current.productId !== next.productId) throw new UserFacingError("Please choose a size of the same fragrance.");
+  if (!current || !next || current.productId !== next.productId) throw new LocalizedError("errors.sameFragranceSize");
   const { available, name } = await assertPurchasable(newVariantId);
-  if (available <= 0) throw new UserFacingError(`${name} is sold out.`);
+  if (available <= 0) throw new LocalizedError("errors.soldOutName", { name });
   await db.$transaction(async (tx) => {
     const dup = await tx.cartItem.findUnique({ where: { cartId_variantId: { cartId, variantId: newVariantId } } });
     if (dup) {
@@ -234,14 +235,14 @@ export async function changeVariant(itemId: string, newVariantId: string) {
 export async function applyCoupon(code: string) {
   const { checkout } = await getSettings();
   const cartId = await findCartId();
-  if (!cartId) throw new UserFacingError("Your bag is empty.");
+  if (!cartId) throw new LocalizedError("errors.bagEmpty");
   const normalised = normaliseCode(code);
-  if (!normalised) throw new UserFacingError("Please enter a code.");
+  if (!normalised) throw new LocalizedError("errors.enterCode");
   const coupon = await db.coupon.findUnique({ where: { code: normalised } });
-  if (!coupon) throw new UserFacingError("We couldn't find that code.");
+  if (!coupon) throw new LocalizedError("errors.codeNotFound");
   const view = await buildCartView(cartId, checkout.maxQtyPerItem);
   const result = evaluateCoupon(coupon, view.subtotal);
-  if (!result.ok) throw new UserFacingError(result.reason);
+  if (!result.ok) throw new LocalizedError(result.reasonKey, result.vars);
   await db.cart.update({ where: { id: cartId }, data: { couponCode: normalised } });
   return buildCartView(cartId, checkout.maxQtyPerItem);
 }

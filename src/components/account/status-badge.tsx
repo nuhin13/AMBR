@@ -1,8 +1,11 @@
+"use client";
+
 import type { OrderStatus } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
-import { STATUS_LABEL } from "@/modules/orders/status";
+import { useI18n } from "@/i18n/client";
+import { cn } from "@/lib/utils";
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const tone = status === "DELIVERED" ? "success" : status === "CANCELLED" || status === "RETURNED" ? "error" : status === "PENDING" ? "gold" : "beige";
-  return <Badge tone={tone}>{STATUS_LABEL[status]}</Badge>;
+  const { t } = useI18n();
+  const tone = status === "DELIVERED" ? "text-success" : status === "CANCELLED" || status === "RETURNED" ? "text-error" : "text-burgundy";
+  return <span className={cn("eyebrow text-[10.5px]", tone)}>{t.labels.orderStatus[status]}</span>;
 }

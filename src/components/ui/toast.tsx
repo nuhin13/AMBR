@@ -3,12 +3,14 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/client";
 
 type Toast = { id: number; tone: "success" | "error" | "info"; message: string };
 const Ctx = createContext<(message: string, tone?: Toast["tone"]) => void>(() => {});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { t: dict } = useI18n();
   const push = useCallback((message: string, tone: Toast["tone"] = "success") => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t.slice(-2), { id, tone, message }]);
@@ -28,7 +30,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           >
             {t.tone === "error" ? <AlertCircle className="mt-0.5 size-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 size-4 shrink-0" />}
             <span className="flex-1">{t.message}</span>
-            <button onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))} aria-label="Dismiss" className="opacity-70 hover:opacity-100">
+            <button onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))} aria-label={dict.common.close} className="opacity-70 hover:opacity-100">
               <X className="size-4" />
             </button>
           </div>

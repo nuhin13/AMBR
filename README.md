@@ -25,7 +25,7 @@ npm run dev                      # http://localhost:3000
 
 | What | URL | Login |
 |------|-----|-------|
-| Storefront | http://localhost:3000 | — (guest checkout) |
+| Storefront | http://localhost:3000 → `/en` · Bangla at http://localhost:3000/bn | — (guest checkout) |
 | Admin dashboard | http://localhost:3000/admin | `owner@ambr.local` / `ChangeMe!2026` (local only; **change it**) |
 | Database browser | `npm run db:studio` | — |
 
@@ -66,14 +66,16 @@ The test database `ambr_test` is created automatically the first time the develo
 ```
 src/
   app/
-    (store)/          Storefront: home, shop, product, cart, checkout, account, content pages
-    admin/            Admin dashboard (role-protected)
+    [locale]/         Storefront under /en and /bn: home, shop, product, cart, checkout, account, journal, content
+    (admin)/admin/    Admin dashboard (role-protected, English; own root layout)
     api/              Payment callbacks, courier webhooks, cron, health
     sitemap.ts robots.ts manifest.ts icon.png
   modules/            Business logic — auth, catalog, cart, checkout, orders, inventory,
                       payments (bKash / Nagad / SSLCommerz), couriers (Pathao / Steadfast),
                       pricing, promotions, shipping, content, reviews, reports, audit…
   components/         UI — ui/ primitives, layout/, product/, cart/, checkout/, home/, admin/…
+  i18n/               locales, dictionaries (en/bn), formatting (Bangla digits), SEO alternates
+  proxy.ts            locale detection and redirects
   lib/                db, env validation, money, phone, logger, rate limiting, sanitising
 prisma/               schema.prisma, migrations/, seed.ts, data/bd-geo.json, remove-demo.ts
 tests/                unit/, integration/, e2e/
@@ -81,6 +83,9 @@ brand/original/       The untouched brand kit supplied by the owner
 public/brand/         Web-ready logo files (background removed only; artwork unchanged)
 doc/                  Planning, design, database, API, integrations, testing, deployment
 ```
+
+## Languages
+The storefront is fully bilingual: `/en/...` and `/bn/...`. Un-prefixed URLs redirect to the visitor's language, which is remembered. UI strings live in `src/i18n/dictionaries/`. Bangla content is managed in the admin's **বাংলা** tabs, each with an independent Draft/Published state. See `doc/10-redesign-and-bilingual/implementation.md`.
 
 ## Key guarantees
 

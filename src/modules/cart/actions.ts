@@ -1,7 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { toActionError, type ActionResult } from "@/lib/action-result";
+import type { ActionResult } from "@/lib/action-result";
+import { localizedAction } from "@/i18n/actions";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { requestMeta } from "@/lib/request";
 import * as cart from "./service";
@@ -10,12 +11,8 @@ import type { CartView } from "./service";
 const id = z.string().min(1).max(40);
 const qty = z.number().int().min(0).max(20);
 
-async function run(fn: () => Promise<CartView>): Promise<ActionResult<CartView>> {
-  try {
-    return { ok: true, data: await fn() };
-  } catch (e) {
-    return toActionError(e);
-  }
+function run(fn: () => Promise<CartView>): Promise<ActionResult<CartView>> {
+  return localizedAction(async () => ({ ok: true as const, data: await fn() }));
 }
 
 export async function getCartAction() {
