@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+/*
+ * AMBR design tokens — see doc/03-design/design-direction.md
+ * Contrast rules: rose and gold are never used for text on cream (decorative only).
+ */
+@theme {
+  --color-burgundy: #4a1022;
+  --color-burgundy-deep: #3a0c1a;
+  --color-burgundy-soft: #6b2a3c;
+  --color-rose: #c9888b;
+  --color-cream: #f7e8e1;
+  --color-cream-light: #fbf3ef;
+  --color-beige: #e6d3c7;
+  --color-gold: #d4b08a;
+  --color-charcoal: #3a2a28;
+  --color-muted: #6b5753;
+  --color-error: #9b2335;
+  --color-success: #4f6b4a;
+
+  --font-serif: var(--font-playfair), var(--font-bengali), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-montserrat), var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-xs: 2px;
+  --radius-card: 4px;
+
+  --tracking-eyebrow: 0.22em;
+
+  --animate-fade-in: fade-in 220ms ease-out both;
+  --animate-slide-in-right: slide-in-right 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-in-left: slide-in-left 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-up: slide-up 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--color-cream);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  @media (min-width: 768px) {
+    body { font-size: 16px; }
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    color: var(--color-burgundy);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.005em;
+  }
+  ::selection {
+    background: var(--color-burgundy);
+    color: var(--color-cream);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-burgundy);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+  }
+  @media (min-width: 768px) {
+    .eyebrow { font-size: 12px; }
+  }
+  .container-x {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 768px) {
+    .container-x { padding-inline: 2rem; }
+  }
+  .section-y {
+    padding-block: 4rem;
+  }
+  @media (min-width: 1024px) {
+    .section-y { padding-block: 6.5rem; }
+  }
+  /* Rich text from the CMS (product descriptions, policy pages) */
+  .prose-ambr {
+    max-width: 68ch;
+    color: var(--color-charcoal);
+  }
+  .prose-ambr > * + * { margin-top: 1em; }
+  .prose-ambr h2 { font-size: 1.5rem; margin-top: 2em; }
+  .prose-ambr h3 { font-size: 1.2rem; margin-top: 1.6em; }
+  .prose-ambr ul { list-style: none; padding-left: 0; }
+  .prose-ambr ul > li { position: relative; padding-left: 1.25em; }
+  .prose-ambr ul > li + li { margin-top: 0.4em; }
+  .prose-ambr ul > li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.72em;
+    width: 6px;
+    height: 1px;
+    background: var(--color-burgundy);
+  }
+  .prose-ambr ol { list-style: decimal; padding-left: 1.25em; }
+  .prose-ambr a { color: var(--color-burgundy); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--color-rose); }
+  .prose-ambr strong { font-weight: 600; color: var(--color-burgundy); }
+  .prose-ambr blockquote { border-left: 1px solid var(--color-gold); padding-left: 1rem; font-family: var(--font-serif); font-style: italic; }
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 200ms ease-out;
+  }
+  .link-underline:hover { background-size: 100% 1px; }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+}

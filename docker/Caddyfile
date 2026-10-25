@@ -1,0 +1,11 @@
+# Automatic HTTPS (Let's Encrypt) for the AMBR storefront.
+{$DOMAIN:ambrbd.com} {
+	encode zstd gzip
+	reverse_proxy app:3000
+	@static path /_next/static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+}
+
+www.{$DOMAIN:ambrbd.com} {
+	redir https://{$DOMAIN:ambrbd.com}{uri} permanent
+}

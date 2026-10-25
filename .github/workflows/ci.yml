@@ -1,0 +1,37 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ambr
+          POSTGRES_PASSWORD: ambr_dev_password
+          POSTGRES_DB: ambr
+        ports: ["5433:5432"]
+        options: --health-cmd "pg_isready -U ambr" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ambr:ambr_dev_password@localhost:5433/ambr?schema=public
+      TEST_DATABASE_URL: postgresql://ambr:ambr_dev_password@localhost:5433/ambr_test?schema=public
+      AUTH_SECRET: ci-secret-ci-secret-ci-secret-ci-secret-123
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: PGPASSWORD=ambr_dev_password psql -h localhost -p 5433 -U ambr -d ambr -c "CREATE DATABASE ambr_test;"
+      - run: npx prisma migrate deploy
+      - run: npm run db:seed:demo
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run start & npx wait-on http://localhost:3000/api/health && npx playwright test

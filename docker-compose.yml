@@ -1,0 +1,29 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# LOCAL DEVELOPMENT — database only; run the app with `npm run dev` for hot reload.
+#   docker compose up -d          (or: npm run db:up)
+# The test database (ambr_test) is created automatically on first start.
+# For the full production-like stack see docker-compose.prod.yml.
+# ──────────────────────────────────────────────────────────────────────────────
+name: ambr
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ambr
+      POSTGRES_PASSWORD: ambr_dev_password
+      POSTGRES_DB: ambr
+    ports:
+      - "5433:5432"
+    volumes:
+      - ambr_pg:/var/lib/postgresql/data
+      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ambr -d ambr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ambr_pg:

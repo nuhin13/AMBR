@@ -1,0 +1,23 @@
+# Keep the build context small and secrets out of images.
+.git
+.github
+node_modules
+.next
+out
+coverage
+test-results
+playwright-report
+tests
+doc
+brand
+backups
+public/uploads
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Dockerfile
+docker-compose*.yml
+.dockerignore
+README.md

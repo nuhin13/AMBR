@@ -1,0 +1,127 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# PRODUCTION STACK (single VPS) — Postgres + migrations + app + HTTPS + jobs + backups
+#
+#   cp .env.example .env.production   # fill in real values (see doc/09-deployment)
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# First run only, to create reference data and the owner account:
+#   RUN_SEED=true docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate
+# ──────────────────────────────────────────────────────────────────────────────
+name: ambr-prod
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-ambr}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ambr}?schema=public
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ambr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ambr}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ambr} -d ${POSTGRES_DB:-ambr}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    shm_size: 256mb
+    # Not published to the host — only reachable on the internal network.
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    image: ambr-migrator:latest
+    env_file: .env.production
+    environment:
+      <<: *app-env
+      RUN_SEED: ${RUN_SEED:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://ambrbd.com}
+        NEXT_PUBLIC_GA4_ID: ${NEXT_PUBLIC_GA4_ID:-}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
+    image: ambr-app:latest
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      <<: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "3000"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-ambrbd.com}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Cancels unpaid online orders after 30 minutes and releases their stock.
+  scheduler:
+    image: curlimages/curl:8.10.1
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'while true; do curl -fsS -H "Authorization: Bearer $$CRON_SECRET" http://app:3000/api/cron/release-reservations || true; echo; sleep 600; done'
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Nightly pg_dump into ./backups (copy these off-server — see doc/09-deployment/backup-and-recovery.md).
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-ambr}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-ambr}
+      BACKUP_HOUR: ${BACKUP_HOUR:-21}
+      RETENTION_DAYS: ${RETENTION_DAYS:-30}
+    entrypoint: ["/bin/sh", "/backup-loop.sh"]
+    volumes:
+      - ./docker/backup-loop.sh:/backup-loop.sh:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
